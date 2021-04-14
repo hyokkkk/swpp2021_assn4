@@ -19,7 +19,7 @@ class FillUndef : public PassInfoMixin<FillUndef> {
     //   V  = add x, y;
     //   V2 = sub V, 1;
     // From the example above, V2 is V's user!
-    outs() <<"        this is value:"<< *V << "\n"; 
+    outs() <<"        this is value:"<< *V << "\n";
     bool flag = false;
     for (auto itr = V->use_begin(), end = V->use_end(); itr != end;) {
       flag = true;
@@ -27,17 +27,17 @@ class FillUndef : public PassInfoMixin<FillUndef> {
       Use &U = *itr++;
       User *Usr = U.getUser();
 
-      //outs() <<"this is use:"<< U << "\n";    // addr이 나온다. 
+      //outs() <<"this is use:"<< U << "\n";    // addr이 나온다.
 
       Instruction *UsrI = dyn_cast<Instruction>(Usr);
       assert(UsrI); // The user (e.g. V2) is an instruction
 
       BasicBlock *BB = UsrI->getParent();
       if (BB->getName() == "undef_zone"){
-        outs() <<"          - undef_zone usr:"<< *Usr << "\n\n"; 
+        outs() <<"          - undef_zone usr:"<< *Usr << "\n\n";
         U.set(UndefValue::get(V->getType()));
       }else{
-        outs() <<"          - normal user:"<< *Usr << "\n\n"; 
+        outs() <<"          - normal user:"<< *Usr << "\n\n";
 
       }
     }
