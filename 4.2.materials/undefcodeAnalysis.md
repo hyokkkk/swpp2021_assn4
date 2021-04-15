@@ -1,5 +1,3 @@
------ build -----
------ run fillundef with fillundef.ll -----
      <argument run 시작>: i1 %cond
         this is value:i1 %cond
           - normal user:  br i1 %cond, label %undef_zone, label %normal_zone
