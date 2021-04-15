@@ -9,33 +9,6 @@
 using namespace llvm;
 using namespace std;
 using namespace llvm::PatternMatch;
-
-   /* case 2. arg & arg
-        define void @f(i32 %y, i32 %x){
-            %cond = icmp eq i32 %x, %y
-            br %cond, %BB_true, %BB_false
-        BB_true:
-            %a = add i32 %x, %y             // 먼저 등장한 %y로 %x를 바꾼다.
-                -> %a = add i32 %y, %y
-        }
-   */
-  // 1. arg는 그냥 vector 만들어서 담아놓는 게 나을 것 같은데. 몇 개 되지도 않을 것.
-  //    inst는 뭐가 comparing arg로 쓰일 지 모르니까 다 담아놓는 건 무리일 듯.
-  // 2. instruction을 다 돌면서 %cond = icmp i32 %a, %b인 것을 찾는다. by matcher
-  // 3. cmpOp %a, %b를 추출하여 각각이 arg인지 inst인지 판단. 
-  //    이걸 먼저 판단해야 replace 당할 reg의 user을 찾을 수 있다.
-  //    how? -> arg: argVec에 있는지 확인.
-  //         -> inst: arg 아니면 inst지 뭐. 누가 먼저 나왔는지 판단해야 함.
-  // 4. 그 user 중에서 2.의 %cond를 이용해(%cond의 user 찾아야 함)
-  //     br i1 %cond, label %true, label %false inst의 cmpOp[0]의 BB name get.
-  // 5. 3에서 구한 replaced 될 value의 user 구한다.
-  // 6. user 중에서 4에서 구한 true BB에게 dominate 당하는 user만 바꾼다. 
-  //        -> optimize 하려면 dummy block을 넣어야 함. printdom.cpp의 
-  //          'edge dominates block'은 dummy block 삽입과 동일한 기능을 한다. 
-  //        -> %cond의 user이 위치하는 BB과, true BB 사이의 edge가
-  //        -> %cond 문의 arg의 usr가 위치하는 BB를 dominate 하면 replace 가능.
-static Function* fp;
-static FunctionAnalysisManager* famp;
 static vector<Value*> argVec;       // dyncast하고 변형해주기 귀찮아서 그냥 넣음.
 static vector<Value*> instVec;
 // TODO : cond같은 eq문이 여러개면 replace 여러개 해야 함.
@@ -43,9 +16,47 @@ static vector<Value*> instVec;
 // 다음으로 넘어가기 때문.
 static Value* toBeReplaced;                
 static Value* replacingVal;                
-//static vector<Instruction*> cond;              // cond inst 위치 기억. br inst 찾기 위함.
+
+// 0. 기본적으로, function의 모든 instruction을 돌면서 icmp (%a, %b)를 찾을 때마다 
+//    replace를 수행한다. 
+// 1. arg는 그냥 vector 만들어서 담아놓는 게 나을 것 같은데. 몇 개 되지도 않을 것.
+//    inst는 뭐가 comparing arg로 쓰일 지 모르니까 다 담아놓는 건 무리일 듯.
+// 2. instruction을 다 돌면서 %cond = icmp i32 %a, %b인 것을 찾는다. by matcher
+// 3. cmpOp %a, %b를 추출하여 각각이 arg인지 inst인지 판단. 
+//    이걸 먼저 판단해야 replace 당할 reg의 user을 찾을 수 있다.
+//    how? -> arg: argVec에 있는지 확인.
+//         -> inst: arg 아니면 inst지 뭐. 누가 먼저 나왔는지 판단해야 함.
+// 4. 그 user 중에서 2.의 %cond를 이용해(%cond의 user 찾아야 함)
+//     br i1 %cond, label %true, label %false inst의 cmpOp[0]의 BB name get.
+// 5. 3에서 구한 replaced 될 value의 user 구한다.
+// 6. user 중에서 4에서 구한 true BB에게 dominate 당하는 user만 바꾼다. 
+//        -> optimize 하려면 dummy block을 넣어야 함. printdom.cpp의 
+//          'edge dominates block'은 dummy block 삽입과 동일한 기능을 한다. 
+//        -> %cond의 user이 위치하는 BB과, true BB 사이의 edge가
+//        -> %cond 문의 arg의 usr가 위치하는 BB를 dominate 하면 replace 가능.
 namespace {
 class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> {
+ 
+// =========================== entry point ===================================
+public:
+    PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
+        // 1. function argument부터 value로 받아서 user를 찾는다.
+        for (Argument &Arg : F.args()){
+            outs() << "[debug]     <argument run 시작>: " <<Arg<< "\n";
+            replaceEquality(F, FAM, &Arg, true);
+        }
+        // 2. BB의 instruction들을 value로 받아 user를 찾는다. 
+        for (auto &BB : F){
+        outs() << "[debug] <BB label>: " << BB.getName() << "\n";
+            for (auto &I : BB){
+                outs() << "[debug]     <Instruction run 시작>: " << I << "\n";
+                replaceEquality(F, FAM, &I, false);
+            }
+        }
+        return PreservedAnalyses::all();
+    }
+
+//==============================================================================
     void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool isArg) {
         // 1. push arguments in vector
         if (isArg){ 
@@ -79,9 +90,7 @@ class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> 
             findToBeReplacedValue(I.getOperand(0), I.getOperand(1));
         
         // 4. %cond를 사용하는 user 찾는다(br i1 %cond, label %true, label %false).
-            bool hasUser = false;
             for (auto itr = V->use_begin(), end = V->use_end(); itr != end;) {
-                hasUser = true;
                 // Conceptually, 'Use' is a triple (User, Used value, Operand index).
                 Use &U = *itr++;
                 User *br= U.getUser();        // br instruction   
@@ -118,33 +127,11 @@ class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> 
                     if (checkDominance(*(inst->getParent()), *targetUserBB, F, FAM)){
                         rU.set(replacingVal);       // toBeReplaced의 use를 replacingVal로 set.
                     }
-                    
-                   // if (checkDominance((*inst).getParent(), userBB->getName()){//이 edge에 dominant){
-                   // }
-
                 }
-//                BasicBlock *BB = UsrI->getParent();
-//                if (BB->getName() == "undef_zone"){
-//                    outs() <<"          - undef_zone usr:"<< *Usr << "\n\n";
-//                    U.set(UndefValue::get(V->getType()));
-//                }else{
-//                    outs() <<"          - normal user:"<< *Usr << "\n\n";
-//                }
             }
-//            if (!hasUser){
-//                outs() << "[debug]      !!! there is no user using this value.\n";
-//            }
-                // Q: Can we use `for (auto &U : V->uses())`?
-                // A: Since we are changing use list, the for loop cannot be used.
-                // U.set() invalidates the iterator, so incrementing the iterator
-                // will crash.
-
-
         }
-
-
-
     }
+
 //=================================================================================
     void findToBeReplacedValue(Value* cmpOp0, Value* cmpOp1){
             outs() << "[debug] cmpOp0: " << *cmpOp0 << "\n";
@@ -199,6 +186,7 @@ class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> 
             "\' should be replaced by \'"<<*replacingVal<< "\'\n\n";
     }
 
+//=================================================================================
     bool checkDominance(BasicBlock& startBB, 
                         BasicBlock& targetBB, Function& F, 
                         FunctionAnalysisManager& FAM) {
@@ -207,71 +195,22 @@ class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> 
         BasicBlock* destBB = TI->getSuccessor(0);   // 어짜피 entry -> true만 보면 된다.
 
        // BasicBlock* BBNext =
-        outs() << "일단 실험해보자 : successor 갯수: " <<  TI->getNumSuccessors() << "\n\n";
-        outs() << "successor[0]: " <<  TI->getSuccessor(0)->getName() << "\n\n";
-        outs() << "successor[1]: " <<  TI->getSuccessor(1)->getName() << "\n\n";
+        outs() << "\n[debug] 일단 실험해보자 : successor 갯수: " <<  TI->getNumSuccessors() << "\n";
+        outs() << "[debug] successor[0]: " <<  TI->getSuccessor(0)->getName() << "\n";
+        outs() << "[debug] successor[1]: " <<  TI->getSuccessor(1)->getName() << "\n";
 
         BasicBlockEdge BBE(&startBB, destBB);
         if (DT.dominates(BBE, &targetBB)){
-            outs() << "Edge (entry" << startBB.getName() <<","<< destBB->getName()
-            << ") dominates " << targetBB.getName() << "!!!!!!!\n";
+            outs() << "***** Edge (entry" << startBB.getName() <<","<< destBB->getName()
+            << ") dominates " << targetBB.getName() << "!!!!!!!\n\n";
             return true;
         }
         return false;
     }
-// ============================ function enterance ===================================
-public:
-    PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
-
-        
-        // 1. function argument부터 value로 받아서 user를 찾는다.
-        for (Argument &Arg : F.args()){
-            outs() << "[debug]     <argument run 시작>: " <<Arg<< "\n";
-            replaceEquality(F, FAM, &Arg, true);
-        }
-        // 2. BB의 instruction들을 value로 받아 user를 찾는다. 
-        for (auto &BB : F){
-        outs() << "[debug] <BB label>: " << BB.getName() << "\n";
-            for (auto &I : BB){
-                outs() << "[debug]     <Instruction run 시작>: " << I << "\n";
-                replaceEquality(F, FAM, &I, false);
-            }
-        }
-
-        return PreservedAnalyses::all();
-    }
-
-    // param을 어떻게 구성할 지 고민해야 함.
-    // DT 사용하려면 FAM까지 전해줘야 함. 
-
-    /* case 1. inst & inst
-        entry:
-            %x = ...
-            br %BB1
-        BB1:
-            %y = ...
-            %cond = icmp eq i32 %x, %y
-            br %cond, %BB_true, %BB_false
-        BB_true:
-            %a = add i32 %x, %y             // %x가 %y를 dominate하니까 %y를 %x로 바꿈.
-                -> %a = add i32 %x, %x      // 센 애로 바꾼다.  
-    */
-
-
-  /* case 3. arg & inst
-    define void @f(i32 %a){
-        %b = ...
-        %cond = icmp eq i32 %a, %b
-        br %cond, %BB_true, %BB_false
-    BB_true:
-        %a = add i32 %a, %b                // arg로 inst를 바꾼다. arg가 더 세다.
-                -> %a - add i32 %a, %a
-    }
-  */
-
 };
 }
 
+//============================================================================
 extern "C" ::llvm::PassPluginLibraryInfo
 llvmGetPassPluginInfo() {
     return {
