@@ -9,44 +9,43 @@
 using namespace llvm;
 using namespace std;
 using namespace llvm::PatternMatch;
-static vector<Value*> argVec;       // dyncast하고 변형해주기 귀찮아서 그냥 넣음.
-static vector<Value*> instVec;
-// TODO : cond같은 eq문이 여러개면 replace 여러개 해야 함.
-// 근데 그래도 vector 만들 필요는 없다. 일단 대체될 것이 정해지면 대체작업 완료하고
-// 다음으로 넘어가기 때문.
-static Value* toBeReplaced;                
-static Value* replacingVal;                
+static vector<Value*> argV; 
+static vector<Value*> instV;
+static Value* loser;                
+static Value* winner;                
 
-// 0. 기본적으로, function의 모든 instruction을 돌면서 icmp (%a, %b)를 찾을 때마다 
+// 0. 기본적으로, function의 모든 instruction을 돌면서 icmp eq (%a, %b)를 찾을 때마다 
 //    replace를 수행한다. 
 // 1. func arguments, instruction은 각각 vector를 만들어 담아놓는다.
 //    무엇으로 replace할 지 결정할 때 defined order가 중요하기 때문.
 // 2. 들어온 value가 `%cond = icmp i32 %a, %b`인 것을 찾는다 by matcher.
 //    icmp inst가 아니라면 바로 return해서 다음 inst를 살핀다.
-// 3. cmpOp %a, %b를 추출하여 각각이 arg인지 inst인지 판단. 
-//    이걸 먼저 판단해야 replace 당할 reg의 user을 찾을 수 있다.
-//    how? -> arg: argVec에 있는지 확인.
-//         -> inst: arg 아니면 inst지 뭐. 누가 먼저 나왔는지 판단해야 함.
-// 4. 그 user 중에서 2.의 %cond를 이용해(%cond의 user 찾아야 함)
-//     br i1 %cond, label %true, label %false inst의 cmpOp[0]의 BB name get.
-// 5. 3에서 구한 replaced 될 value의 user 구한다.
-// 6. user 중에서 4에서 구한 true BB에게 dominate 당하는 user만 바꾼다. 
+// 3. icmp의 operand("Op0", "Op1") 각각이 arg인지 inst인지 판단. 
+//    ** how? -> arg: argV에 있는지 확인.
+//            -> inst: argV에 없으면 inst. instV search해서 execute order 알아내야.
+//    그 후에 replace 당할 register name("loser")과 replace를 하게 될
+//    "winner"를 찾는다. 
+// 4. `br i1 %cond, label %true, label %false`, 즉, %cond를 사용하는 "condUser" 찾아야 함.
+//    condUser가 br instruction인 경우, 해당 BB를 BBEdge의 startBB로 만들어야 하므로.
+// 5. 3에서 구한 loser를 instruction에 사용하고 있는 user("loserUser")를 찾는다.
+// 6. "loserUser" 중에서 4에서 구한 startBB와 true BB 사이의 edge에게 dominate 당하는 
+//    "loserUser"의 operand만 "winner"로 바꾼다. 
 //        -> optimize 하려면 dummy block을 넣어야 함. printdom.cpp의 
-//          'edge dominates block'은 dummy block 삽입과 동일한 기능을 한다. 
-//        -> %cond의 user이 위치하는 BB과, true BB 사이의 edge가
-//        -> %cond 문의 arg의 usr가 위치하는 BB를 dominate 하면 replace 가능.
+//          'edge dominates block'이 dummy block 삽입과 동일한 기능을 한다. 
+//        -> "condUser"이 위치하는 BB(startBB)와, true BB 사이의 edge가
+//           "loserUserBB"를 dominate 하면 "winner"로 replace 가능.
 namespace {
 class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> {
  
 // =========================== entry point ===================================
 public:
     PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
-        // 1. function argument부터 value로 받아서 user를 찾는다.
+        // arg는 정의된 순서만 알면 되므로 argV에 넣기만 한다.
         for (Argument &Arg : F.args()){
             outs() << "\n\n[debug]=======<argument run 시작>: " <<Arg<< "\n";
             replaceEquality(F, FAM, &Arg, true);
         }
-        // 2. BB의 instruction들을 value로 받아 user를 찾는다. 
+        // BB의 instruction 중, icmp eq %a, %b 를 찾아서 작업 시작.
         for (auto &BB : F){
         outs() << "[debug]================ <BB label>: " << BB.getName() << "\n";
             for (auto &I : BB){
@@ -59,45 +58,49 @@ public:
 
 //==============================================================================
     void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool isArg) {
-        // 1. push arguments in vector
+
+    // 1. push arguments into a vector
         if (isArg){ 
-            argVec.push_back(V);
+            argV.push_back(V);
             //--------------- delete
-            for (int i = 0; i < argVec.size(); i++){
-                outs() << "[debug] args in vec["<<i<<"]: " << *argVec[i] << "\n";
+            for (int i = 0; i < argV.size(); i++){
+                outs() << "[debug] args in vec["<<i<<"]: " << *argV[i] << "\n";
             }
             return ;
         }
 
-        // 2. instruction 돌면서 `%cond = icmp i32 %a, %b` 형태인지 확인
+    // 2. instruction 돌면서 `%cond = icmp i32 %a, %b` 형태인지 확인
         Instruction* inst = dyn_cast<Instruction>(V);
         Instruction &I = *inst;
-        instVec.push_back(V);
+        instV.push_back(V);
 
         outs() <<"[debug]        this is value(inst): "<< *V << "\n";
         outs() << "[debug]              inst name:"<< (*inst).getName() << "\n";
-        Value* cmpOp0, *cmpOp1;         // %a, %b를 가리킴
+        Value* Op0, *Op1;         // %a, %b를 가리킴
         ICmpInst::Predicate Pred;
 
         // if not matched with '%cond = icmp eq (v1, v2)', return.
-        if (!(match(&I, m_ICmp(Pred, m_Value(cmpOp0), m_Value(cmpOp1)))
+        if (!(match(&I, m_ICmp(Pred, m_Value(Op0), m_Value(Op1)))
                             && Pred == ICmpInst::ICMP_EQ)) { return ; }
 
-    //        
-    // codes below are only executed when matched with `%cond = icmp eq (v1, v2)`.
-    // 
+                
+        /* codes below are only executed when matched with `%cond = icmp eq (v1, v2)` */
+         
         outs() << "\n[debug] ****** I found compare inst!: " << I << "\n";
 
-    // 3. 각 cmpOp가 arg인지 inst인지 판단, replaced 되어야 할 value(arg/inst) 구함
-        findToBeReplacedValue(I.getOperand(0), I.getOperand(1));
+    // 3. Op0, Op1의 arg/inst 여부 판단. winner/loser 구한다.
+        decideWinnerLoser(I.getOperand(0), I.getOperand(1));
     
-    // 4. %cond를 사용하는 user 찾는다(br i1 %cond, label %true, label %false).
+    // 4. %cond를 사용하는 "condUser" 찾는다. 
+    //    ex. `br i1 %cond, label %true, label %false`
+    //    여러 군데에 있을 수 있으므로 for문을 돌린다. 
         for (auto itr = V->use_begin(), end = V->use_end(); itr != end;) {
-            // Conceptually, 'Use' is a triple (User, Used value, Operand index).
             Use &U = *itr++;
-            User *br= U.getUser();        // br instruction   
+            User *condUser = U.getUser();        // br instruction   
 
-            Instruction *brInst = dyn_cast<Instruction>(br);
+//    warning: condUser는 하나라고 장담할 수 없음. br instruction인 것도 장담할 수 없음.
+        // todo : 이게 br인지 판단해야 함. 
+            Instruction *brInst = dyn_cast<Instruction>(condUser);
             assert(brInst); // The user (e.g. op2) is an instruction
 
             // 와, 첫번째 lable이 왜 operand 2지??! 왜순서가 0, 2, 1 이지?
@@ -106,85 +109,84 @@ public:
             outs() << "[debug] ---operand0: "<< brInst -> getOperand(0)->getName() << "\n";
             outs() << "[debug] ---operand1: "<< brInst -> getOperand(1)->getName() << "\n";
             outs() << "[debug] ---operand2: "<< brInst -> getOperand(2)->getName() << "\n";
+            outs() << "[debug] >>> 여기로 뛸거야 >>> " << brInst->getOperand(2)->getName()<< "\n";
 
-            StringRef trueBBName = brInst->getOperand(2)->getName();
-            outs() << "[debug] >>>>> 여기로 뛸거야 >>> " << trueBBName << "\n";
+    // 5. loser의 user를 구한다.
+            for (auto loserItr = loser->use_begin(), loserEnd = loser->use_end(); loserItr != loserEnd;){
+                Use& loserUse = *loserItr++;
+                User* loserUser = loserUse.getUser();      // 바뀌어야 하는 reg를 사용하는 inst.
+                Instruction* targetInst = dyn_cast<Instruction>(loserUser);
+                assert(targetInst);
 
-    // 5. toBeReplaced의 user를 구한다.
-            for (auto ritr = toBeReplaced->use_begin(), rend = toBeReplaced->use_end(); ritr != end;){
-                Use& rU = *ritr++;
-                User* rUsr = rU.getUser();      // 바뀌어야 하는 reg를 사용하는 inst.
-                Instruction* replaceTargetInst = dyn_cast<Instruction>(rUsr);
-                assert(replaceTargetInst);
-
-                outs() << "[debug] 바뀌어야 하는 instruction: "<<*replaceTargetInst<<"\n";
-                for (int i = 0; i < replaceTargetInst->getNumOperands(); i++){
+                outs() << "[debug] 바뀌어야 하는 instruction: "<<*targetInst<<"\n";
+                for (int i = 0; i < targetInst->getNumOperands(); i++){
                     outs() << "[debug] ---target operand" << i <<": "<<
-                    replaceTargetInst-> getOperand(i)->getName() << "\n";
+                    targetInst-> getOperand(i)->getName() << "\n";
                 }
 
-                // 6. replaceTargetInst 중에서 entry와 trueblock 사이의 edge에 의해
+                // 6. targetInst 중에서 entry와 trueblock 사이의 edge에 의해
                 // dominated 되는 BB에 있는 것만 replace한다.
-                BasicBlock* targetUserBB = replaceTargetInst->getParent();
-                if (checkDominance(*(inst->getParent()), *targetUserBB, F, FAM)){
-                    rU.set(replacingVal);       // toBeReplaced의 use를 replacingVal로 set.
+                BasicBlock* targetBB = targetInst->getParent();
+                if (checkDominance(*(inst->getParent()), *targetBB, F, FAM)){
+                    loserUse.set(winner);       // loser의 use를 winner로 set.
                 }
             }
         }
     }
 
 //=================================================================================
-    void findToBeReplacedValue(Value* cmpOp0, Value* cmpOp1){
-            outs() << "[debug] cmpOp0: " << *cmpOp0 << "\n";
-            outs() << "[debug] cmpOp0.getname(): " << (*cmpOp0).getName() << "\n";
-            outs() << "[debug] cmpOp1: " << *cmpOp1 << "\n";
-            outs() << "[debug] cmpOp1.getname(): " << (*cmpOp1).getName() << "\n";
+    void decideWinnerLoser(Value* Op0, Value* Op1){
+            outs() << "[debug] Op0: " << *Op0 << "\n";
+            outs() << "[debug] Op0.getname(): " << (*Op0).getName() << "\n";
+            outs() << "[debug] Op1: " << *Op1 << "\n";
+            outs() << "[debug] Op1.getname(): " << (*Op1).getName() << "\n";
 
-            // each cmpOp's index if it is in the argVec
-            int op0argVec = -1;
-            int op1argVec = -1;
-            for (int i = 0; i < argVec.size(); i++){
-                // Value 자체의 값을 비교하고 싶었지만 그런 함수 못찾음
-                // 어짜피 llvm ir에서는 var 이름 중복 안 되니 상관없다고 생각함.
-                if ((*argVec[i]).getName().equals((*cmpOp0).getName())){
-                    op0argVec = i;
-                }else if((*argVec[i]).getName().equals((*cmpOp1).getName())){
-                    op1argVec = i;
+            // each Op's index if it is in the argV
+            // -1 : instruction (not in the argV)
+            // 0, 1, 2... : its index in argV
+            int op0argV = -1;
+            int op1argV = -1;
+            for (int i = 0; i < argV.size(); i++){
+                // compare with names.
+                if ((*argV[i]).getName().equals((*Op0).getName())){
+                    op0argV = i;
+                }else if((*argV[i]).getName().equals((*Op1).getName())){
+                    op1argV = i;
                 }
             }
 
-            outs() << "[debug]--" << *cmpOp0 << " is argv[" << op0argVec << "]\n";
-            outs() << "[debug]--" << *cmpOp1 << " is argv[" << op1argVec << "]\n\n";
+            outs() << "[debug]--" << *Op0 << " is argv[" << op0argV << "]\n";
+            outs() << "[debug]--" << *Op1 << " is argv[" << op1argV << "]\n\n";
 
-            // (1) 둘 다 inst 인 경우: 나중에 오는 애가 replaced.(first dominates last) 
-            if (op0argVec == -1 && op1argVec == -1){
-                int op0instVec = -1;
-                int op1instVec = -1;
-                for (int i = 0; i < instVec.size(); i++){
-                    if ((*instVec[i]).getName().equals((*cmpOp0).getName())){
-                        op0instVec= i;
-                    }else if((*instVec[i]).getName().equals((*cmpOp1).getName())){
-                        op1instVec= i;
+            // (1) inst vs. inst : first come, wins.
+            if (op0argV == -1 && op1argV == -1){
+                int op0instV = -1;
+                int op1instV = -1;
+                for (int i = 0; i < instV.size(); i++){
+                    if ((*instV[i]).getName().equals((*Op0).getName())){
+                        op0instV= i;
+                    }else if((*instV[i]).getName().equals((*Op1).getName())){
+                        op1instV= i;
                     }
                 }
-                outs() << "[debug]--" << *cmpOp0 << " is inst[" << op0instVec<< "]\n";
-                outs() << "[debug]--" << *cmpOp1 << " is inst[" << op1instVec<< "]\n\n";
+                outs() << "[debug]--" << *Op0 << " is inst[" << op0instV<< "]\n";
+                outs() << "[debug]--" << *Op1 << " is inst[" << op1instV<< "]\n\n";
 
-                toBeReplaced = op0instVec > op1instVec ? cmpOp0 : cmpOp1;
-                replacingVal = op0instVec > op1instVec ? cmpOp1 : cmpOp0;
-            // (2) 둘 다 arg 인 경우: 나중에 나오는 애가 replaced 
-            }else if (op0argVec != -1 && op1argVec != -1){
-                toBeReplaced = op0argVec > op1argVec ? cmpOp0 : cmpOp1;
-                replacingVal = op0argVec > op1argVec ? cmpOp1 : cmpOp0;
+                loser = op0instV > op1instV ? Op0 : Op1;
+                winner = op0instV > op1instV ? Op1 : Op0;
 
-            // (3) 하나는 arg, 하나는 inst: 무조건 arg replaces inst
+            // (2) arg vs. arg : first come, wins.
+            }else if (op0argV != -1 && op1argV != -1){
+                loser = op0argV > op1argV ? Op0 : Op1;
+                winner = op0argV > op1argV ? Op1 : Op0;
+
+            // (3) arg vs. inst : arg always wins.
             }else {
-                // -1 인게 inst지. 
-                toBeReplaced = op0argVec == -1 ? cmpOp0 : cmpOp1;
-                replacingVal = op0argVec == -1 ? cmpOp1 : cmpOp0;
+                loser = op0argV == -1 ? Op0 : Op1;
+                winner = op0argV == -1 ? Op1 : Op0;
             }
-            outs() << "[debug]  ** \'"<< *toBeReplaced << 
-            "\' should be replaced by \'"<<*replacingVal<< "\'\n\n";
+            outs() << "[debug]  ** \'"<< *loser << 
+            "\' should be replaced by \'"<<*winner<< "\'\n\n";
     }
 
 //=================================================================================
