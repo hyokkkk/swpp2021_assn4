@@ -91,14 +91,12 @@ public:
     // 3. Op0, Op1의 arg/inst 여부 판단. winner/loser 구한다.
         decideWinnerLoser(I.getOperand(0), I.getOperand(1));
     
-    // 4. %cond를 사용하는 "condUser" 찾는다. 
-    //    ex. `br i1 %cond, label %true, label %false`
-    //    여러 군데에 있을 수 있으므로 for문을 돌린다. 
+    // 4. %cond를 사용하는 "condUser" 찾는다. ex) `br i1 %cond, label %true, label %false`
+    //    warning: condUser는 하나라고 장담할 수 없음. br instruction인 것도 장담할 수 없음.
         for (auto itr = V->use_begin(), end = V->use_end(); itr != end;) {
             Use &U = *itr++;
-            User *condUser = U.getUser();        // br instruction   
+            User *condUser = U.getUser();        
 
-//    warning: condUser는 하나라고 장담할 수 없음. br instruction인 것도 장담할 수 없음.
         // todo : 이게 br인지 판단해야 함. 
             Instruction *brInst = dyn_cast<Instruction>(condUser);
             assert(brInst); // The user (e.g. op2) is an instruction
@@ -111,10 +109,10 @@ public:
             outs() << "[debug] ---operand2: "<< brInst -> getOperand(2)->getName() << "\n";
             outs() << "[debug] >>> 여기로 뛸거야 >>> " << brInst->getOperand(2)->getName()<< "\n";
 
-    // 5. loser의 user를 구한다.
+    // 5. find "loserUsers"
             for (auto loserItr = loser->use_begin(), loserEnd = loser->use_end(); loserItr != loserEnd;){
                 Use& loserUse = *loserItr++;
-                User* loserUser = loserUse.getUser();      // 바뀌어야 하는 reg를 사용하는 inst.
+                User* loserUser = loserUse.getUser();      
                 Instruction* targetInst = dyn_cast<Instruction>(loserUser);
                 assert(targetInst);
 
@@ -124,11 +122,13 @@ public:
                     targetInst-> getOperand(i)->getName() << "\n";
                 }
 
-                // 6. targetInst 중에서 entry와 trueblock 사이의 edge에 의해
-                // dominated 되는 BB에 있는 것만 replace한다.
+    // 6. only replace "loser" which is in targetBB with "winner"
+    // when targetBB is dominated by BBEdge(entryBB, trueBB). 
+    // it works as "dummy block"
                 BasicBlock* targetBB = targetInst->getParent();
                 if (checkDominance(*(inst->getParent()), *targetBB, F, FAM)){
-                    loserUse.set(winner);       // loser의 use를 winner로 set.
+                    // loser가 use되는 곳을 winner로 set
+                    loserUse.set(winner);       
                 }
             }
         }
@@ -190,14 +190,13 @@ public:
     }
 
 //=================================================================================
-    bool checkDominance(BasicBlock& startBB, 
-                        BasicBlock& targetBB, Function& F, 
-                        FunctionAnalysisManager& FAM) {
+    bool checkDominance(BasicBlock& startBB, BasicBlock& targetBB, 
+                        Function& F, FunctionAnalysisManager& FAM) {
         DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
         BranchInst *TI = dyn_cast<BranchInst>(startBB.getTerminator());
-        BasicBlock* destBB = TI->getSuccessor(0);   // 어짜피 entry -> true만 보면 된다.
+        // br i1 %cond, label %successor(0), label %successor(1)
+        BasicBlock* destBB = TI->getSuccessor(0);   
 
-       // BasicBlock* BBNext =
         outs() << "\n[debug] 일단 실험해보자 : successor 갯수: " <<  TI->getNumSuccessors() << "\n";
         outs() << "[debug] successor[0]: " <<  TI->getSuccessor(0)->getName() << "\n";
         outs() << "[debug] successor[1]: " <<  TI->getSuccessor(1)->getName() << "\n";
