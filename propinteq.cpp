@@ -4,6 +4,7 @@
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/raw_ostream.h"
 #include <vector>
+#include <string>
 
 using namespace llvm;
 using namespace std;
@@ -18,41 +19,58 @@ using namespace llvm::PatternMatch;
                 -> %a = add i32 %y, %y
         }
    */
-  // 0. arg는 그냥 vector 만들어서 담아놓는 게 나을 것 같은데. 몇 개 되지도 않을 것.
+  // 1. arg는 그냥 vector 만들어서 담아놓는 게 나을 것 같은데. 몇 개 되지도 않을 것.
   //    inst는 뭐가 comparing arg로 쓰일 지 모르니까 다 담아놓는 건 무리일 듯.
-  // 1. instruction을 다 돌면서 %cond = icmp i32 %a, %b인 것을 찾는다. by matcher
-  // 2. operand %a, %b를 추출.
-  // 3. operand가 arg인지 inst인지 판단.
-  //    how? -> arg부터
-  // 4. 가장 먼저 define한 value를 찾는다.(예시에는 define이 여러 번 돼있는데 오타인듯?)
-  // 5. 그 value의 user를 찾음.
-  // 6. 그 user 중에서 1.의 %cond를 이용해(%cond의 user 찾아야 함)
-  //     br 하는 inst의 operand[0]의 BB name get.
-  // 7. user 중에서 해당 BB에게 dominate 당하는 user만 바꾼다. (case별로 다름)
+  // 2. instruction을 다 돌면서 %cond = icmp i32 %a, %b인 것을 찾는다. by matcher
+  // 3. cmpOp %a, %b를 추출하여 각각이 arg인지 inst인지 판단. 
+  //    이걸 먼저 판단해야 replace 당할 reg의 user을 찾을 수 있다.
+  //    how? -> arg: argVec에 있는지 확인.
+  //         -> inst: arg 아니면 inst지 뭐. 누가 먼저 나왔는지 판단해야 함.
+  // 4. 그 user 중에서 2.의 %cond를 이용해(%cond의 user 찾아야 함)
+  //     br i1 %cond, label %true, label %false inst의 cmpOp[0]의 BB name get.
+  // 5. 3에서 구한 replaced 될 value의 user 구한다.
+  // 6. user 중에서 4에서 구한 true BB에게 dominate 당하는 user만 바꾼다. (case별로 다름)
+  //        -> optimize 하려면 dummy block을 넣어야 함. printdom.cpp의 
+  //          'edge dominates block'은 dummy block 삽입과 동일한 기능을 한다. 
+  //        -> %cond의 user이 위치하는 BB과, true BB 사이의 edge가
+  //        -> %cond 문의 arg의 usr가 위치하는 BB를 dominate 하면 replace 가능.
+
+static vector<Value*> argVec;       // dyncast하고 변형해주기 귀찮아서 그냥 넣음.
+static vector<Value*> instVec;
+Value* toBeReplaced;                // TODO : cond같은 eq문이 여러개면 replace 여러개 해야 함.
 namespace {
 class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> {
     void replaceEquality(Value *V, bool isArg) {
         // 1. push arguments in vector
-        vector<Value*> argsVec;
         if (isArg){ 
-            argsVec.push_back(V);
+            argVec.push_back(V);
             //--------------- delete
-            for (int i = 0; i < argsVec.size(); i++){
-                outs() << "[debug] args in vec: " << *argsVec[i] << "\n\n";
+            for (int i = 0; i < argVec.size(); i++){
+                outs() << "[debug] args in vec["<<i<<"]: " << *argVec[i] << "\n\n";
             }
             return ;
         }
-            outs() <<"[debug]        this is value:"<< *V << "\n";
 
-        // 2. instruction 돌면서 %cond = icmp i32 %a, %b 형태인지 확인
+        // 2. instruction 돌면서 `%cond = icmp i32 %a, %b` 형태인지 확인
         Instruction* inst = dyn_cast<Instruction>(V);
         Instruction &I = *inst;
-        outs() << "inst 맞냐"<< *inst << "\n";
-        Value* V1, *V2;
+        instVec.push_back(V);
+
+        outs() <<"[debug]        this is value(inst): "<< *V << "\n";
+        outs() << "[debug]              inst name:"<< (*inst).getName() << "\n";
+        Instruction* cond;              // cond inst 위치 기억. br inst 찾기 위함.
+        Value* cmpOp0, *cmpOp1;         // %a, %b를 가리킴
         ICmpInst::Predicate Pred;
-        if (match(&I, m_ICmp(Pred, m_Value(V1), m_Value(V2))) 
-            && Pred == ICmpInst::ICMP_EQ){
-                outs() << "[debug]******I found compare inst!: " << I << "\n";
+
+        // Match 'icmp eq (v1, v2)'
+        if (match(&I, m_ICmp(Pred, m_Value(cmpOp0), m_Value(cmpOp1))) 
+                                && Pred == ICmpInst::ICMP_EQ){
+            outs() << "[debug]******I found compare inst!: " << I << "\n";
+
+        // 3. 각 cmpOp가 arg인지 inst인지 판단
+            cmpOp0= I.getOperand(0);
+            cmpOp1= I.getOperand(1);
+            findToBeReplacedValue(cmpOp0, cmpOp1);
         }
 
 
@@ -65,7 +83,7 @@ class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> 
 //            User *Usr = U.getUser();
 //
 //            Instruction *UsrI = dyn_cast<Instruction>(Usr);
-//            assert(UsrI); // The user (e.g. V2) is an instruction
+//            assert(UsrI); // The user (e.g. op2) is an instruction
 //
 //            BasicBlock *BB = UsrI->getParent();
 //            if (BB->getName() == "undef_zone"){
@@ -82,6 +100,55 @@ class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> 
 //            // A: Since we are changing use list, the for loop cannot be used.
 //            // U.set() invalidates the iterator, so incrementing the iterator
 //            // will crash.
+    }
+
+    void findToBeReplacedValue(Value* cmpOp0, Value* cmpOp1){
+            outs() << "[debug] cmpOp0: " << *cmpOp0 << "\n";
+            outs() << "[debug] cmpOp0.getname(): " << (*cmpOp0).getName() << "\n";
+            outs() << "[debug] cmpOp1: " << *cmpOp1 << "\n";
+            outs() << "[debug] cmpOp1.getname(): " << (*cmpOp1).getName() << "\n";
+
+            // each cmpOp's index if it is in the argVec
+            int cmp0argVec = -1;
+            int cmp1argVec = -1;
+            for (int i = 0; i < argVec.size(); i++){
+                // Value 자체의 값을 비교하고 싶었지만 그런 함수 못찾음
+                // 어짜피 llvm ir에서는 var 이름 중복 안 되니 상관없다고 생각함.
+                if ((*argVec[i]).getName().equals((*cmpOp0).getName())){
+                    cmp0argVec = i;
+                }else if((*argVec[i]).getName().equals((*cmpOp1).getName())){
+                    cmp1argVec = i;
+                }
+            }
+
+            outs() << "[debug]--" << *cmpOp0 << "is argv[" << cmp0argVec << "]\n";
+            outs() << "[debug]--" << *cmpOp1 << "is argv[" << cmp1argVec << "]\n\n";
+
+            // (1) 둘 다 inst 인 경우: 나중에 오는 애가 replaced.(first dominates last) 
+            if (cmp0argVec == -1 && cmp1argVec == -1){
+                int cmp0instVec = -1;
+                int cmp1instVec = -1;
+                for (int i = 0; i < instVec.size(); i++){
+                    if ((*instVec[i]).getName().equals((*cmpOp0).getName())){
+                        cmp0instVec= i;
+                    }else if((*instVec[i]).getName().equals((*cmpOp1).getName())){
+                        cmp1instVec= i;
+                    }
+                }
+                outs() << "[debug]--" << *cmpOp0 << "is inst[" << cmp0instVec<< "]\n";
+                outs() << "[debug]--" << *cmpOp1 << "is inst[" << cmp1instVec<< "]\n\n";
+
+                toBeReplaced = cmp0instVec > cmp1instVec ? cmpOp0 : cmpOp1;
+            // (2) 둘 다 arg 인 경우: 나중에 나오는 애가 replaced 
+            }else if (cmp0argVec != -1 && cmp1argVec != -1){
+                toBeReplaced = cmp0argVec > cmp1argVec ? cmpOp0 : cmpOp1; 
+
+            // (3) 하나는 arg, 하나는 inst: 무조건 arg replaces inst
+            }else {
+                // -1 인게 inst지. 
+                toBeReplaced = cmp0argVec == -1 ? cmpOp0 : cmpOp1;
+            }
+            outs() << "[debug]  ** to be replaced: "<< *toBeReplaced << "\n\n\n";
     }
 
     
