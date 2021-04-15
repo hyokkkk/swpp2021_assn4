@@ -19,9 +19,10 @@ static Value* replacingVal;
 
 // 0. 기본적으로, function의 모든 instruction을 돌면서 icmp (%a, %b)를 찾을 때마다 
 //    replace를 수행한다. 
-// 1. arg는 그냥 vector 만들어서 담아놓는 게 나을 것 같은데. 몇 개 되지도 않을 것.
-//    inst는 뭐가 comparing arg로 쓰일 지 모르니까 다 담아놓는 건 무리일 듯.
-// 2. instruction을 다 돌면서 %cond = icmp i32 %a, %b인 것을 찾는다. by matcher
+// 1. func arguments, instruction은 각각 vector를 만들어 담아놓는다.
+//    무엇으로 replace할 지 결정할 때 defined order가 중요하기 때문.
+// 2. 들어온 value가 `%cond = icmp i32 %a, %b`인 것을 찾는다 by matcher.
+//    icmp inst가 아니라면 바로 return해서 다음 inst를 살핀다.
 // 3. cmpOp %a, %b를 추출하여 각각이 arg인지 inst인지 판단. 
 //    이걸 먼저 판단해야 replace 당할 reg의 user을 찾을 수 있다.
 //    how? -> arg: argVec에 있는지 확인.
@@ -42,14 +43,14 @@ public:
     PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
         // 1. function argument부터 value로 받아서 user를 찾는다.
         for (Argument &Arg : F.args()){
-            outs() << "[debug]     <argument run 시작>: " <<Arg<< "\n";
+            outs() << "\n\n[debug]=======<argument run 시작>: " <<Arg<< "\n";
             replaceEquality(F, FAM, &Arg, true);
         }
         // 2. BB의 instruction들을 value로 받아 user를 찾는다. 
         for (auto &BB : F){
-        outs() << "[debug] <BB label>: " << BB.getName() << "\n";
+        outs() << "[debug]================ <BB label>: " << BB.getName() << "\n";
             for (auto &I : BB){
-                outs() << "[debug]     <Instruction run 시작>: " << I << "\n";
+                outs() << "[debug]=====<Instruction run 시작>: " << I << "\n";
                 replaceEquality(F, FAM, &I, false);
             }
         }
@@ -78,55 +79,55 @@ public:
         Value* cmpOp0, *cmpOp1;         // %a, %b를 가리킴
         ICmpInst::Predicate Pred;
 
-        // Match '%cond = icmp eq (v1, v2)'
-        if (match(&I, m_ICmp(Pred, m_Value(cmpOp0), m_Value(cmpOp1))) 
-                                && Pred == ICmpInst::ICMP_EQ){
-            outs() << "\n[debug] ****** I found compare inst!: " << I << "\n";
-            //cond.push_back(inst);
+        // if not matched with '%cond = icmp eq (v1, v2)', return.
+        if (!(match(&I, m_ICmp(Pred, m_Value(cmpOp0), m_Value(cmpOp1)))
+                            && Pred == ICmpInst::ICMP_EQ)) { return ; }
 
-        // 3. 각 cmpOp가 arg인지 inst인지 판단, replaced 되어야 할 value(arg/inst) 구함
-            //cmpOp0= I.getOperand(0);
-            //cmpOp1= I.getOperand(1);
-            findToBeReplacedValue(I.getOperand(0), I.getOperand(1));
-        
-        // 4. %cond를 사용하는 user 찾는다(br i1 %cond, label %true, label %false).
-            for (auto itr = V->use_begin(), end = V->use_end(); itr != end;) {
-                // Conceptually, 'Use' is a triple (User, Used value, Operand index).
-                Use &U = *itr++;
-                User *br= U.getUser();        // br instruction   
+    //        
+    // codes below are only executed when matched with `%cond = icmp eq (v1, v2)`.
+    // 
+        outs() << "\n[debug] ****** I found compare inst!: " << I << "\n";
 
-                Instruction *brInst = dyn_cast<Instruction>(br);
-                assert(brInst); // The user (e.g. op2) is an instruction
+    // 3. 각 cmpOp가 arg인지 inst인지 판단, replaced 되어야 할 value(arg/inst) 구함
+        findToBeReplacedValue(I.getOperand(0), I.getOperand(1));
+    
+    // 4. %cond를 사용하는 user 찾는다(br i1 %cond, label %true, label %false).
+        for (auto itr = V->use_begin(), end = V->use_end(); itr != end;) {
+            // Conceptually, 'Use' is a triple (User, Used value, Operand index).
+            Use &U = *itr++;
+            User *br= U.getUser();        // br instruction   
 
-                // 와, 첫번째 lable이 왜 operand 2지??! 왜순서가 0, 2, 1 이지?
-                outs() << "[debug] ** this is br user: "<< *brInst<< "\n";
-                outs() << "[debug] num of operands: "<< brInst -> getNumOperands()<< "\n";
-                outs() << "[debug] ---operand0: "<< brInst -> getOperand(0)->getName() << "\n";
-                outs() << "[debug] ---operand1: "<< brInst -> getOperand(1)->getName() << "\n";
-                outs() << "[debug] ---operand2: "<< brInst -> getOperand(2)->getName() << "\n";
+            Instruction *brInst = dyn_cast<Instruction>(br);
+            assert(brInst); // The user (e.g. op2) is an instruction
 
-                StringRef trueBBName = brInst->getOperand(2)->getName();
-                outs() << "[debug] >>>>> 여기로 뛸거야 >>> " << trueBBName << "\n";
+            // 와, 첫번째 lable이 왜 operand 2지??! 왜순서가 0, 2, 1 이지?
+            outs() << "[debug] ** this is br user: "<< *brInst<< "\n";
+            outs() << "[debug] num of operands: "<< brInst -> getNumOperands()<< "\n";
+            outs() << "[debug] ---operand0: "<< brInst -> getOperand(0)->getName() << "\n";
+            outs() << "[debug] ---operand1: "<< brInst -> getOperand(1)->getName() << "\n";
+            outs() << "[debug] ---operand2: "<< brInst -> getOperand(2)->getName() << "\n";
 
-        // 5. toBeReplaced의 user를 구한다.
-                for (auto ritr = toBeReplaced->use_begin(), rend = toBeReplaced->use_end(); ritr != end;){
-                    Use& rU = *ritr++;
-                    User* rUsr = rU.getUser();      // 바뀌어야 하는 reg를 사용하는 inst.
-                    Instruction* replaceTargetInst = dyn_cast<Instruction>(rUsr);
-                    assert(replaceTargetInst);
+            StringRef trueBBName = brInst->getOperand(2)->getName();
+            outs() << "[debug] >>>>> 여기로 뛸거야 >>> " << trueBBName << "\n";
 
-                    outs() << "[debug] 바뀌어야 하는 instruction: "<<*replaceTargetInst<<"\n";
-                    for (int i = 0; i < replaceTargetInst->getNumOperands(); i++){
-                        outs() << "[debug] ---target operand" << i <<": "<<
-                        replaceTargetInst-> getOperand(i)->getName() << "\n";
-                    }
+    // 5. toBeReplaced의 user를 구한다.
+            for (auto ritr = toBeReplaced->use_begin(), rend = toBeReplaced->use_end(); ritr != end;){
+                Use& rU = *ritr++;
+                User* rUsr = rU.getUser();      // 바뀌어야 하는 reg를 사용하는 inst.
+                Instruction* replaceTargetInst = dyn_cast<Instruction>(rUsr);
+                assert(replaceTargetInst);
 
-                    // 6. replaceTargetInst 중에서 entry와 trueblock 사이의 edge에 의해
-                    // dominated 되는 BB에 있는 것만 replace한다.
-                    BasicBlock* targetUserBB = replaceTargetInst->getParent();
-                    if (checkDominance(*(inst->getParent()), *targetUserBB, F, FAM)){
-                        rU.set(replacingVal);       // toBeReplaced의 use를 replacingVal로 set.
-                    }
+                outs() << "[debug] 바뀌어야 하는 instruction: "<<*replaceTargetInst<<"\n";
+                for (int i = 0; i < replaceTargetInst->getNumOperands(); i++){
+                    outs() << "[debug] ---target operand" << i <<": "<<
+                    replaceTargetInst-> getOperand(i)->getName() << "\n";
+                }
+
+                // 6. replaceTargetInst 중에서 entry와 trueblock 사이의 edge에 의해
+                // dominated 되는 BB에 있는 것만 replace한다.
+                BasicBlock* targetUserBB = replaceTargetInst->getParent();
+                if (checkDominance(*(inst->getParent()), *targetUserBB, F, FAM)){
+                    rU.set(replacingVal);       // toBeReplaced의 use를 replacingVal로 set.
                 }
             }
         }
