@@ -46,7 +46,7 @@ static Value* replacingVal;
 //static vector<Instruction*> cond;              // cond inst 위치 기억. br inst 찾기 위함.
 namespace {
 class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> {
-    void replaceEquality(Value *V, bool isArg) {
+    void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool isArg) {
         // 1. push arguments in vector
         if (isArg){ 
             argVec.push_back(V);
@@ -96,8 +96,8 @@ class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> 
                 outs() << "[debug] ---operand1: "<< brInst -> getOperand(1)->getName() << "\n";
                 outs() << "[debug] ---operand2: "<< brInst -> getOperand(2)->getName() << "\n";
 
-                StringRef trueBlock = brInst->getOperand(2)->getName();
-                outs() << "[debug] >>>>> 여기로 뛸거야 >>> " << trueBlock << "\n";
+                StringRef trueBBName = brInst->getOperand(2)->getName();
+                outs() << "[debug] >>>>> 여기로 뛸거야 >>> " << trueBBName << "\n";
 
         // 5. toBeReplaced의 user를 구한다.
                 for (auto ritr = toBeReplaced->use_begin(), rend = toBeReplaced->use_end(); ritr != end;){
@@ -114,10 +114,13 @@ class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> 
 
                     // 6. replaceTargetInst 중에서 entry와 trueblock 사이의 edge에 의해
                     // dominated 되는 BB에 있는 것만 replace한다.
-                    BasicBlock* BB = replaceTargetInst->getParent();
-                    if (BB->getName()){//이 edge에 dominant){
+                    BasicBlock* targetUserBB = replaceTargetInst->getParent();
+                    if (checkDominance(*(inst->getParent()), *targetUserBB, F, FAM)){
                         rU.set(replacingVal);       // toBeReplaced의 use를 replacingVal로 set.
                     }
+                    
+                   // if (checkDominance((*inst).getParent(), userBB->getName()){//이 edge에 dominant){
+                   // }
 
                 }
 //                BasicBlock *BB = UsrI->getParent();
@@ -142,7 +145,7 @@ class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> 
 
 
     }
-
+//=================================================================================
     void findToBeReplacedValue(Value* cmpOp0, Value* cmpOp1){
             outs() << "[debug] cmpOp0: " << *cmpOp0 << "\n";
             outs() << "[debug] cmpOp0.getname(): " << (*cmpOp0).getName() << "\n";
@@ -196,25 +199,42 @@ class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> 
             "\' should be replaced by \'"<<*replacingVal<< "\'\n\n";
     }
 
-    
+    bool checkDominance(BasicBlock& startBB, 
+                        BasicBlock& targetBB, Function& F, 
+                        FunctionAnalysisManager& FAM) {
+        DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
+        BranchInst *TI = dyn_cast<BranchInst>(startBB.getTerminator());
+        BasicBlock* destBB = TI->getSuccessor(0);   // 어짜피 entry -> true만 보면 된다.
+
+       // BasicBlock* BBNext =
+        outs() << "일단 실험해보자 : successor 갯수: " <<  TI->getNumSuccessors() << "\n\n";
+        outs() << "successor[0]: " <<  TI->getSuccessor(0)->getName() << "\n\n";
+        outs() << "successor[1]: " <<  TI->getSuccessor(1)->getName() << "\n\n";
+
+        BasicBlockEdge BBE(&startBB, destBB);
+        if (DT.dominates(BBE, &targetBB)){
+            outs() << "Edge (entry" << startBB.getName() <<","<< destBB->getName()
+            << ") dominates " << targetBB.getName() << "!!!!!!!\n";
+            return true;
+        }
+        return false;
+    }
 // ============================ function enterance ===================================
 public:
     PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
 
-
-       DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
-
+        
         // 1. function argument부터 value로 받아서 user를 찾는다.
         for (Argument &Arg : F.args()){
             outs() << "[debug]     <argument run 시작>: " <<Arg<< "\n";
-            replaceEquality(&Arg, true);
+            replaceEquality(F, FAM, &Arg, true);
         }
         // 2. BB의 instruction들을 value로 받아 user를 찾는다. 
         for (auto &BB : F){
         outs() << "[debug] <BB label>: " << BB.getName() << "\n";
             for (auto &I : BB){
                 outs() << "[debug]     <Instruction run 시작>: " << I << "\n";
-                replaceEquality(&I, false);
+                replaceEquality(F, FAM, &I, false);
             }
         }
 
@@ -248,29 +268,7 @@ public:
                 -> %a - add i32 %a, %a
     }
   */
-    // 1. two args equal: 우리는 지금 동일한 상황만 살펴서 true에 dominant 한 block들의 
-    //      use만 바꿔줘야 함. 
-    //      그러니 matcher로 비교instruction인지 확인함. 
-    //      그리고 그 다음 br inst 읽어서 true인 BB로 감.
-    //      계속 BB 돌면서 true BB에 dominant인지 확인
-    //      dominant이면 user 찾아서 %x, %y 이면 후자로 전자를 바꾼다. 
-//    bool checkDominance(BasicBlock& B1, BasicBlock& B2){
-    // 1. 
-    /*---------------------------------------------*/
-//    // dominant 판별
-//        for (Function::iterator I = F.begin(), E = F.end(); I != E; ++I) {
-//            for (Function::iterator I2 = I; I2 != E; ++I2) {
-//                BasicBlock &B1 = *I;
-//                BasicBlock &B2 = *I2;
-//                if (DT.dominates(&B1, &B2)){
-//                    outs() << B1.getName() << " dominates " << B2.getName() << "!\n";
-//                }else if (DT.dominates(&B2, &B1)){
-//                    outs() << B2.getName() << " dominates " << B1.getName() << "!\n";
-//                }
-//            }
-//        }                 
-//    //*---------------------------------------------*
-//    }
+
 };
 }
 
