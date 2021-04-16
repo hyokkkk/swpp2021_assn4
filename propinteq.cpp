@@ -11,7 +11,7 @@ using namespace std;
 using namespace llvm::PatternMatch;
 
 // < Algorithms >
-// --- 이레의 숫자와 코드 설명에 쓰여진 숫자는 같은 내용을 설명한다.
+// --- 아래의 숫자와 코드 설명에 쓰여진 숫자는 같은 내용을 설명한다.
 // 0. 기본적으로, function의 모든 instruction을 돌면서 icmp eq (%a, %b)를 찾을 때마다
 //    replace를 수행한다.
 // 1. func arguments, instruction은 각각 vector를 만들어 담아놓는다.
@@ -53,7 +53,7 @@ PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
     return PreservedAnalyses::all();
 }
 
-//==============================================================================
+//============================================================================
 // The reason why "F" and "FAM" are in param is to use 'checkDominance()' function.
 void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool isArg) {
 
@@ -74,14 +74,14 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool i
     if (!(match(&I, m_ICmp(Pred, m_Value(Op0), m_Value(Op1))) && Pred == ICmpInst::ICMP_EQ)) {
          return ;
     }
-/******* codes below are only executed when matched with `%cond = icmp eq (v1, v2)` */
+    /******* codes below are only executed when matched with `%cond = icmp eq (v1, v2)` ********/
 
     // 3. check Op0, Op1 are whether 'arg' or 'inst', and decide who's the "winner" and "loser"
     decideWinnerLoser(I.getOperand(0), I.getOperand(1));
 
     // 4. find "condUser" which uses %cond in its insturction.
     //     ex) `br i1 %cond, label %true, label %false`
-    //     Use a loop to find "condUser" since there just one "condUser" exists is not guranteed.
+    //     Use a loop to find "condUser" since there exists just one "condUser" is not guranteed.
     for (auto itr = V->use_begin(), end = V->use_end(); itr != end;) {
         Use &U = *itr++;
         User *condUser = U.getUser();
@@ -116,7 +116,7 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool i
     }
 }
 
-//=================================================================================
+//============================================================================
 void decideWinnerLoser(Value* Op0, Value* Op1){
 
         // -1 : instruction (not in the argV)
@@ -156,7 +156,7 @@ void decideWinnerLoser(Value* Op0, Value* Op1){
         }
 }
 
-//=================================================================================
+//============================================================================
 bool checkDominance(BasicBlock& startBB, BasicBlock& targetBB,
                     Function& F, FunctionAnalysisManager& FAM)
 {
