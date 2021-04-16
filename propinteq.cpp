@@ -81,7 +81,8 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool i
 
     // 4. find "condUser" which uses %cond in its insturction.
     //     ex) `br i1 %cond, label %true, label %false`
-    //     Use a loop to find "condUser" since there exists just one "condUser" is not guranteed.
+    //     Use a loop to find "condUser" for preventing erorrs, 
+    //     althoguh it is guaranteed that there exists only one "condUser" in our assn.
     for (auto itr = V->use_begin(), end = V->use_end(); itr != end;) {
         Use &U = *itr++;
         User *condUser = U.getUser();
