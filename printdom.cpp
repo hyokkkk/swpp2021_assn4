@@ -31,7 +31,6 @@ public:
                 }
             }
         }
-
         // Show how to check dominance relation between edge and a block.
         BasicBlock &BBEntry = F.getEntryBlock();
         BranchInst *TI = dyn_cast<BranchInst>(BBEntry.getTerminator());
