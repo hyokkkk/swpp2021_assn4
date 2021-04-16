@@ -133,6 +133,25 @@ void decideWinnerLoser(Value* Op0, Value* Op1){
                 op1argV = i;
             }
         }
+        // FIXME: 아앗.. 잠깐만.... ir code에서, %a가 %b보다 더 상단부에 작성되었다는 게 %a가 %b보다 항상 먼저
+        //        execute 된다는 걸 보장할 수가 없잖아.
+        /*
+                %cond = icmp eq i32 %a, %b
+                br i1 %cond, label %loop, label %exit
+            latch:
+                call void @f(i32 %a, i32 %b, i32 %c)
+                br label %loop
+            loop:
+                call void @f(i32 %a, i32 %b, i32 %c)
+                %cond2 = icmp eq i32 %a, %c
+                br i1 %cond2, label %latch, label %exit
+            exit:
+                call void @f(i32 %a, i32 %b, i32 %c)
+                ret void
+    */
+        // 이런 경우, 내가 짠대로 하면 latch: 가 먼저 이 코드에 들어와서 execute 순서가 아나리 작성순서대로 문제를
+        // 해결하는 게 돼버림. 
+        // 실제 logically executed order(????)을 알 수 있는 방법이 있나?
         // (1) inst vs. inst : first executed, become winner.
         if (op0argV == -1 && op1argV == -1){
             int op0instV = -1;
