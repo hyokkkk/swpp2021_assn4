@@ -12,22 +12,24 @@ using namespace llvm::PatternMatch;
 
 // < Algorithms >
 // --- 아래의 숫자와 코드 설명에 쓰여진 숫자는 같은 내용을 설명한다.
-// 0. 기본적으로, function의 모든 instruction을 돌면서 icmp eq (%a, %b)를 찾을 때마다
-//    replace를 수행한다.
-// 1. func arguments, instruction은 각각 vector를 만들어 담아놓는다.
-//    무엇으로 replace할 지 결정할 때 defined order가 중요하기 때문.
-// 2. 들어온 value가 `%cond = icmp i32 %a, %b`인 것을 찾는다 by matcher.
+// 1. function을 한 번 돌면서 모든 arg, instruction을 각각 vector에 넣어놓는다
+//    3.번 단계를 할 때 필요함. 
+// 2. instruction을 하나씩 돌면서 `%cond = icmp i32 %a, %b`인 것을 찾는다 by matcher.
 //    icmp inst가 아니라면 바로 return해서 다음 inst를 살핀다.
-// 3. icmp의 operand("Op0", "Op1") 각각이 arg인지 inst인지 판단.
+// 3. <decide Winner and loser>
+//    icmp의 operand("Op0", "Op1") 각각이 arg인지 inst인지 판단.
 //    ** how? -> arg: argV에 있는지 확인.
 //            -> inst: argV에 없으면 inst. 
 //    ** 그 후에 replace 당할 register name("loser")과 replace를 하게 될 "winner"를 찾는다.
 //            -> 1) inst vs. inst / 2) arg vs. arg / 3) arg vs. inst 인 경우가 있다.
 //            -> 1)가 좀 까다로운데 `decideWinnerLoser()`에 기술해놓음.
-// 4. `br i1 %cond, label %true, label %false`, 즉, %cond를 사용하는 "condUser" 찾아야 함.
+// 4. <find condUser>
+//    `br i1 %cond, label %true, label %false`, 즉, %cond를 사용하는 "condUser" 찾아야 함.
 //    condUser가 br instruction인 경우, 해당 BB를 BBEdge의 startBB로 만들어야 하므로.
-// 5. 3에서 구한 "loser"를 instruction에 사용하고 있는 user("loserUser")를 찾는다.
-// 6. "loserUser" 중에서 4에서 구한 startBB와 true BB 사이의 edge에게 dominate 당하는
+// 5. <find loserUser>
+//    3에서 구한 "loser"를 instruction에 사용하고 있는 user("loserUser")를 찾는다.
+// 6. <replace>
+//    "loserUser" 중에서 4에서 구한 startBB와 true BB 사이의 edge에게 dominate 당하는
 //    "loserUser"의 operand만 "winner"로 바꾼다.
 //        -> optimize 하려면 dummy block을 넣어야 함. printdom.cpp의
 //          'edge dominates block'이 dummy block 삽입과 동일한 기능을 한다.
@@ -44,6 +46,8 @@ class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> 
 // =========================== entry point ===================================
 public:
 PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
+
+    // 1. push arguments, instructions into vectors
     for (Argument &Arg : F.args()){ 
         completeVector(&Arg, true);
     }
@@ -73,7 +77,6 @@ void completeVector(Value* V, bool isArg){
 // The reason why "F" and "FAM" are in param is to use 'checkDominance()' function.
 void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool isArg) {
 
-    // 1. push arguments into a vector
     // 2. check the instruction is `%cond = icmp i32 %a, %b` or not.
     Instruction* inst = dyn_cast<Instruction>(V);
     assert(inst);
@@ -110,7 +113,7 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool i
         if (!(match(brInst, m_Br(m_Value(C), m_BasicBlock(TrueBB), m_BasicBlock(FalseBB))))){
             return ;
         }
- outs() << "\n[debug] ** 4. find condUser: "<< *brInst<< "\n";
+        outs() << "\n[debug] ** 4. find condUser: "<< *brInst<< "\n";
         outs() << "[debug] num of operands: "<< brInst -> getNumOperands()<< "\n";
         outs() << "[debug] ---operand0: "<< brInst -> getOperand(0)->getName() << "\n";
         outs() << "[debug] ---operand1: "<< brInst -> getOperand(1)->getName() << "\n";
@@ -124,7 +127,7 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool i
             User* loserUser = loserUse.getUser();
             Instruction* targetInst = dyn_cast<Instruction>(loserUser);
             assert(targetInst);
-          outs() << "[debug] ** 5. loserUsers: "<<*targetInst<<"\n";
+            outs() << "[debug] ** 5. loserUsers: "<<*targetInst<<"\n";
             // 6. replace "loser"s which are in "targetBB"s with "winner" only when
             //    "targetBB" is dominated by BBEdge(entryBB, trueBB).
             //    it works same as "dummy block"
@@ -168,7 +171,6 @@ void decideWinnerLoser(Value* Op0, Value* Op1, Function& F, FunctionAnalysisMana
             int op0instV = -1, op1instV = -1;
 
             // find BBs which each instruction is in. 
-            // 아..... inst가 나중에 들어오면 instV에 없구나!
             for (int i = 0; i < instV.size(); i++){
                 if ((*instV[i]).getName().equals((*Op0).getName())){
                     op0instV= i;
