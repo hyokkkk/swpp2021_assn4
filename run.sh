@@ -41,7 +41,7 @@ if [[ "$1" == "run" || "$1" == "all" ]]; then
   echo "----- run input.ll -----"
   set +e
   $2/opt -load-pass-plugin=./libPropIntEq$EXT \
-         -passes="prop-int-eq" check1.ll -S -o -
+         -passes="prop-int-eq" input.ll -S -o -
 fi
 
 if [[ "$1" == "test" || "$1" == "all" ]]; then

@@ -5,7 +5,6 @@
 
 define i32 @f(i32 %zonber, i32 %buy, i32 %hold, i32 %sell, i32 %samsung, i32 %tothemoon) {
 ; CHECK-LABEL:  @f(i32 %zonber, i32 %buy, i32 %hold, i32 %sell, i32 %samsung, i32 %tothemoon) {
-; CHECK:        entry:
 ; CHECK-NEXT:     [[APPLE:%.*]] = add i32 [[BUY:%.*]], [[HOLD:%.*]]
 ; CHECK-NEXT:     [[HYUNDAI:%.*]] = mul i32 [[ZONBER:%.*]], [[TOTHEMOON:%.*]]
 ; CHECK-NEXT:     [[COND0:%.*]] = icmp eq i32 [[APPLE]], [[SAMSUNG:%.*]]
@@ -21,14 +20,14 @@ define i32 @f(i32 %zonber, i32 %buy, i32 %hold, i32 %sell, i32 %samsung, i32 %to
 ; CHECK-NEXT:     [[COND3:%.*]] = icmp eq i32 [[ZONBER]], [[SAMSUNG]]
 ; CHECK-NEXT:     br i1 [[COND3]], label [[TTT:%.*]], label [[EXIT]]
 ; CHECK:        TTT:
-; CHECK-NEXT:     call i32 @f(i32 [[ZONBER]], i32 [[ZONBER]], i32 [[ZONBER]], i32 [[KAKAO]], i32 [[KAL]], i32 [[SHINSEGYE]])
+; CHECK-NEXT:     call i32 @f(i32 [[ZONBER]], i32 [[ZONBER]], i32 [[ZONBER]], i32 [[KAKAO]], i32 [[KAL]], i32[[SHINSEGYE]])
 ; CHECK-NEXT:     [[COND7:%.*]] = icmp eq i32 [[KAL]], [[ZONBER]]
 ; CHECK-NEXT:     br i1 [[COND7]], label [[TTTT:%.*]], label [[TTTF:%.*]]
 ; CHECK:        TTTT:
-; CHECK-NEXT:     call i32 @f(i32 [[ZONBER]], i32 [[ZONBER]], i32 [[ZONBER]], i32 [[ZONBER]], i32 [[KAKAO]], i32 [[SHINSEGYE]])
+; CHECK-NEXT:     call i32 @f(i32 [[ZONBER]], i32 [[ZONBER]], i32 [[ZONBER]], i32 [[ZONBER]], i32 [[KAKAO]], i32[[SHINSEGYE]])
 ; CHECK-NEXT:     br label [[EXIT]]
 ; CHECK:        TTTF:
-; CHECK-NEXT:     call i32 @f(i32 [[KAL]], i32 [[ZONBER]], i32 [[ZONBER]], i32 [[ZONBER]], i32 [[KAKAO]], i32 [[SHINSEGYE]])
+; CHECK-NEXT:     call i32 @f(i32 [[KAL]], i32 [[ZONBER]], i32 [[ZONBER]], i32 [[ZONBER]], i32 [[KAKAO]], i32[[SHINSEGYE]])
 ; CHECK-NEXT:     br label [[EXIT]]
 ; CHECK:        F:
 ; CHECK-NEXT:     [[HANMI:%.*]] = sub i32 [[SAMSUNG]], [[APPLE]]
@@ -41,17 +40,16 @@ define i32 @f(i32 %zonber, i32 %buy, i32 %hold, i32 %sell, i32 %samsung, i32 %to
 ; CHECK-NEXT:     [[COND5:%.*]] = icmp eq i32 [[HYUNDAI]], [[HANMI]]
 ; CHECK-NEXT:     br i1 [[COND5]], label [[FTT:%.*]], label [[FTF_FTTT:%.*]]
 ; CHECK:        FTT:
-; CHECK-NEXT:     call i32 @f(i32 [[SAMSUNG]], i32 [[APPLE]], i32 [[HYUNDAI]], i32 [[HYUNDAI]], i32 [[HUGEL]], i32 [[HYUNDAI]])
+; CHECK-NEXT:     call i32 @f(i32 [[SAMSUNG]], i32 [[APPLE]], i32 [[HYUNDAI]], i32 [[HYUNDAI]], i32 [[HUGEL]], i32[[HYUNDAI]])
 ; CHECK-NEXT:     [[COND6:%.*]] = icmp eq i32 [[HUGEL]], [[HYUNDAI]]
 ; CHECK-NEXT:     br i1 [[COND6]], label [[FTF_FTTT]], label [[EXIT]]
 ; CHECK:        FTF_FTTT:
-; CHECK-NEXT:     call i32 @f(i32 [[HANMI]], i32 [[APPLE]], i32 [[HUGEL]], i32 [[SAMSUNG]], i32 [[TOTHEMOON]], i32 [[HANMI]])
+; CHECK-NEXT:     call i32 @f(i32 [[HANMI]], i32 [[APPLE]], i32 [[HUGEL]], i32 [[SAMSUNG]], i32 [[TOTHEMOON]], i32[[HANMI]])
 ; CHECK-NEXT:     br label [[EXIT]]
 ; CHECK:        exit:
 ; CHECK-NEXT:     call i32 @f(i32 [[SAMSUNG]], i32 [[APPLE]], i32 [[HYUNDAI]], i32 [[SELL]], i32 [[ZONBER]], i32 [[TOTHEMOON]])
 ; CHECK-NEXT:     ret i32 0
 ;
-entry:
   %apple = add i32 %buy, %hold
   %hyundai = mul i32 %zonber, %tothemoon
   %cond0 = icmp eq i32 %apple, %samsung
