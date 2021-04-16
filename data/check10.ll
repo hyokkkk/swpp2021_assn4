@@ -15,13 +15,13 @@ define void @loop(i32 %a, i32 %b, i32 %c) {
 ;
   %cond = icmp eq i32 %a, %b
   br i1 %cond, label %loop, label %exit
-latch:
-  call void @f(i32 %a, i32 %b, i32 %c)
-  br label %loop
 loop:
   call void @f(i32 %a, i32 %b, i32 %c)
   %cond2 = icmp eq i32 %a, %c
   br i1 %cond2, label %latch, label %exit
+latch:
+  call void @f(i32 %a, i32 %b, i32 %c)
+  br label %loop
 exit:
   call void @f(i32 %a, i32 %b, i32 %c)
   ret void

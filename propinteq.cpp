@@ -54,7 +54,7 @@ PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
 }
 
 //============================================================================
-// The reason why "F" and "FAM" are in param is to use 'checkDominance()' function.
+// The reason why "F" and "FAM" are in param is to use 'checkBBEDominance()' function.
 void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool isArg) {
 
     // 1. push arguments into a vector
@@ -77,7 +77,7 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool i
     /****** codes below are only executed when matched with `%cond = icmp eq (v1, v2)` ********/
 
     // 3. check Op0, Op1 are whether 'arg' or 'inst', and decide who's the "winner" and "loser"
-    decideWinnerLoser(I.getOperand(0), I.getOperand(1));
+    decideWinnerLoser(I.getOperand(0), I.getOperand(1), F, FAM);
 
     // 4. find "condUser" which uses %cond in its insturction.
     //     ex) `br i1 %cond, label %true, label %false`
@@ -110,7 +110,7 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool i
             //    "targetBB" is dominated by BBEdge(entryBB, trueBB).
             //    it works same as "dummy block"
             BasicBlock* targetBB = targetInst->getParent();
-            if (checkDominance(*(inst->getParent()), *targetBB, F, FAM)){
+            if (checkBBEDominance(*(inst->getParent()), *targetBB, F, FAM)){
                 // loser가 use되는 곳을 winner로 set
                 loserUse.set(winner);
             }
@@ -119,7 +119,7 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool i
 }
 
 //============================================================================
-void decideWinnerLoser(Value* Op0, Value* Op1){
+void decideWinnerLoser(Value* Op0, Value* Op1, Function& F, FunctionAnalysisManager& FAM){
 
         // -1 : instruction (not in the argV)
         // 0, 1, 2... : index in argV
@@ -135,37 +135,57 @@ void decideWinnerLoser(Value* Op0, Value* Op1){
         }
         // FIXME: 아앗.. 잠깐만.... ir code에서, %a가 %b보다 더 상단부에 작성되었다는 게 %a가 %b보다 항상 먼저
         //        execute 된다는 걸 보장할 수가 없잖아.
-        /*
-                %cond = icmp eq i32 %a, %b
-                br i1 %cond, label %loop, label %exit
-            latch:
-                call void @f(i32 %a, i32 %b, i32 %c)
-                br label %loop
-            loop:
-                call void @f(i32 %a, i32 %b, i32 %c)
-                %cond2 = icmp eq i32 %a, %c
-                br i1 %cond2, label %latch, label %exit
-            exit:
-                call void @f(i32 %a, i32 %b, i32 %c)
-                ret void
-    */
         // 이런 경우, 내가 짠대로 하면 latch: 가 먼저 이 코드에 들어와서 execute 순서가 아나리 작성순서대로 문제를
         // 해결하는 게 돼버림. 
-        // 실제 logically executed order(????)을 알 수 있는 방법이 있나?
         // (1) inst vs. inst : first executed, become winner.
+        // instructions in same BB : compare instV index. (first come, first executed.)
+        // instructions in diff BB : check the dominance of two BBs. Instruction in dominant BB
+        //                           dominates instruction in non-dominant BB.
         if (op0argV == -1 && op1argV == -1){
+            // i) 같은 BB에 있는지 확인
+            // 일단 inst에 있는 건 맞으니까 아래에서 이름 돌면서 Bb 뽑아낸다.
             int op0instV = -1;
             int op1instV = -1;
+            // 각 instruction이 존재하는 BB 알아내기 위해서. 
+            Instruction *instOp0, *instOp1;
+            BasicBlock *op0BB, *op1BB;
             // same algorithm as above
             for (int i = 0; i < instV.size(); i++){
                 if ((*instV[i]).getName().equals((*Op0).getName())){
                     op0instV= i;
+                    instOp0 = dyn_cast<Instruction>(instV[i]);
+                    op0BB = instOp0->getParent();
                 }else if((*instV[i]).getName().equals((*Op1).getName())){
                     op1instV= i;
+                    instOp1 = dyn_cast<Instruction>(instV[i]);
+                    op1BB = instOp1->getParent();
                 }
             }
-            loser = op0instV > op1instV ? Op0 : Op1;
-            winner = op0instV > op1instV ? Op1 : Op0;
+            // BB가 같은지 확인
+            if (op0BB->getName() == op1BB->getName()){
+                loser = op0instV > op1instV ? Op0 : Op1;
+                winner = op0instV > op1instV ? Op1 : Op0;
+
+                outs() << "아마 다 여기 들어올껄\n";
+                return ;
+                // 다르면 dominance 확인해야 함. 
+            } else {
+                // [param index] BB dominates the other BB.
+                int opNdom = checkBBDominance(*op0BB, *op1BB, F, FAM);
+                if (!opNdom){
+                    // op0 dominates op1
+                    winner = Op0;
+                    loser = Op1;
+                    return;
+                }else if (opNdom == 1){
+                    winner = Op1;
+                    loser = Op0;
+                    return ;
+                }
+                outs() << "no dominance relation\n";
+
+
+            }
         // (2) arg vs. arg : first defined, become winner. @f(i32 %y, i32 %x) -> %y wins.
         }else if (op0argV != -1 && op1argV != -1){
             loser = op0argV > op1argV ? Op0 : Op1;
@@ -178,7 +198,7 @@ void decideWinnerLoser(Value* Op0, Value* Op1){
 }
 
 //============================================================================
-bool checkDominance(BasicBlock& startBB, BasicBlock& targetBB,
+bool checkBBEDominance(BasicBlock& startBB, BasicBlock& targetBB,
                     Function& F, FunctionAnalysisManager& FAM)
 {
     DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
@@ -190,6 +210,20 @@ bool checkDominance(BasicBlock& startBB, BasicBlock& targetBB,
 
     if (DT.dominates(BBE, &targetBB)){ return true; }
     return false;
+}
+//============================================================================
+int checkBBDominance(BasicBlock& B0, BasicBlock& B1, Function& F, FunctionAnalysisManager& FAM){
+        DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
+                if (DT.dominates(&B0, &B1)){
+                    outs() << B0.getName() << " dominates " << B1.getName() << "!\n";
+                    // [param index] BB dominates the other BB.
+                    return 0;
+                }else if (DT.dominates(&B1, &B0)){
+                    outs() << B1.getName() << " dominates " << B0.getName() << "!\n";
+                    return 1;
+                }
+                // no dominance relation
+                return -1;
 }
 };
 }
