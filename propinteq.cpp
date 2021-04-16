@@ -20,8 +20,10 @@ using namespace llvm::PatternMatch;
 //    icmp inst가 아니라면 바로 return해서 다음 inst를 살핀다.
 // 3. icmp의 operand("Op0", "Op1") 각각이 arg인지 inst인지 판단.
 //    ** how? -> arg: argV에 있는지 확인.
-//            -> inst: argV에 없으면 inst. instV search해서 execute order 알아내야.
-//    그 후에 replace 당할 register name("loser")과 replace를 하게 될 "winner"를 찾는다.
+//            -> inst: argV에 없으면 inst. 
+//    ** 그 후에 replace 당할 register name("loser")과 replace를 하게 될 "winner"를 찾는다.
+//            -> 1) inst vs. inst / 2) arg vs. arg / 3) arg vs. inst 인 경우가 있다.
+//            -> 1)가 좀 까다로운데 `decideWinnerLoser()`에 기술해놓음.
 // 4. `br i1 %cond, label %true, label %false`, 즉, %cond를 사용하는 "condUser" 찾아야 함.
 //    condUser가 br instruction인 경우, 해당 BB를 BBEdge의 startBB로 만들어야 하므로.
 // 5. 3에서 구한 "loser"를 instruction에 사용하고 있는 user("loserUser")를 찾는다.
@@ -54,7 +56,7 @@ PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
 }
 
 //============================================================================
-// The reason why "F" and "FAM" are in param is to use 'checkBBEDominance()' function.
+// The reason why "F" and "FAM" are in param is to use 'checkDominance()' function.
 void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool isArg) {
 
     // 1. push arguments into a vector
@@ -133,23 +135,16 @@ void decideWinnerLoser(Value* Op0, Value* Op1, Function& F, FunctionAnalysisMana
                 op1argV = i;
             }
         }
-        // FIXME: 아앗.. 잠깐만.... ir code에서, %a가 %b보다 더 상단부에 작성되었다는 게 %a가 %b보다 항상 먼저
-        //        execute 된다는 걸 보장할 수가 없잖아.
-        // 이런 경우, 내가 짠대로 하면 latch: 가 먼저 이 코드에 들어와서 execute 순서가 아나리 작성순서대로 문제를
-        // 해결하는 게 돼버림. 
         // (1) inst vs. inst : first executed, become winner.
-        // instructions in same BB : compare instV index. (first come, first executed.)
-        // instructions in diff BB : check the dominance of two BBs. Instruction in dominant BB
-        //                           dominates instruction in non-dominant BB.
+        //      i) instructions in same BB : compare instV index. (first come, first executed.)
+        //      ii) instructions in diff BB : check the dominance of two BBs. Instruction in 
+        //                                  dominant BB dominates instruction in non-dominant BB.
         if (op0argV == -1 && op1argV == -1){
-            // i) 같은 BB에 있는지 확인
-            // 일단 inst에 있는 건 맞으니까 아래에서 이름 돌면서 Bb 뽑아낸다.
-            int op0instV = -1;
-            int op1instV = -1;
-            // 각 instruction이 존재하는 BB 알아내기 위해서. 
             Instruction *instOp0, *instOp1;
             BasicBlock *op0BB, *op1BB;
-            // same algorithm as above
+            int op0instV = -1, op1instV = -1;
+
+            // find BBs which each instruction is in. 
             for (int i = 0; i < instV.size(); i++){
                 if ((*instV[i]).getName().equals((*Op0).getName())){
                     op0instV= i;
@@ -161,16 +156,15 @@ void decideWinnerLoser(Value* Op0, Value* Op1, Function& F, FunctionAnalysisMana
                     op1BB = instOp1->getParent();
                 }
             }
-            // BB가 같은지 확인
+
+            // i) Op0, Op1 are in the same BB.
             if (op0BB->getName() == op1BB->getName()){
                 loser = op0instV > op1instV ? Op0 : Op1;
                 winner = op0instV > op1instV ? Op1 : Op0;
-
-                outs() << "아마 다 여기 들어올껄\n";
                 return ;
-                // 다르면 dominance 확인해야 함. 
+            // ii) Op0, Op1 are in different BBs.
             } else {
-                // [param index] BB dominates the other BB.
+                // opNdom : [param index]BB dominates the other BB.
                 int opNdom = checkBBDominance(*op0BB, *op1BB, F, FAM);
                 if (!opNdom){
                     // op0 dominates op1
@@ -178,22 +172,24 @@ void decideWinnerLoser(Value* Op0, Value* Op1, Function& F, FunctionAnalysisMana
                     loser = Op1;
                     return;
                 }else if (opNdom == 1){
+                    // op1 dominates op0
                     winner = Op1;
                     loser = Op0;
                     return ;
                 }
-                outs() << "no dominance relation\n";
-
-
+                outs() << "no dominant relation\n";
+                return;
             }
         // (2) arg vs. arg : first defined, become winner. @f(i32 %y, i32 %x) -> %y wins.
         }else if (op0argV != -1 && op1argV != -1){
             loser = op0argV > op1argV ? Op0 : Op1;
             winner = op0argV > op1argV ? Op1 : Op0;
+            return;
         // (3) arg vs. inst : arg always wins.
         }else {
             loser = op0argV == -1 ? Op0 : Op1;
             winner = op0argV == -1 ? Op1 : Op0;
+            return;
         }
 }
 
@@ -213,17 +209,18 @@ bool checkBBEDominance(BasicBlock& startBB, BasicBlock& targetBB,
 }
 //============================================================================
 int checkBBDominance(BasicBlock& B0, BasicBlock& B1, Function& F, FunctionAnalysisManager& FAM){
-        DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
-                if (DT.dominates(&B0, &B1)){
-                    outs() << B0.getName() << " dominates " << B1.getName() << "!\n";
-                    // [param index] BB dominates the other BB.
-                    return 0;
-                }else if (DT.dominates(&B1, &B0)){
-                    outs() << B1.getName() << " dominates " << B0.getName() << "!\n";
-                    return 1;
-                }
-                // no dominance relation
-                return -1;
+    DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
+    if (DT.dominates(&B0, &B1)){
+        // todo : delete
+        outs() << B0.getName() << " dominates " << B1.getName() << "!\n";
+        // [param index] BB dominates the other BB.
+        return 0;
+    }else if (DT.dominates(&B1, &B0)){
+        outs() << B1.getName() << " dominates " << B0.getName() << "!\n";
+        return 1;
+    }
+    // no dominant relation
+    return -1;
 }
 };
 }
