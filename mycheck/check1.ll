@@ -5,7 +5,8 @@
 
 ; Case : instruction vs. instruction.
 ; *** instruction dominance 따질 때 단순히 ir code상 선후관계로 판단하는 것을
-;     catch 하기 위해 BB 순서를 섞어놓음.
+;     catch 하기 위해 서로 다른 BB에 위치한 instruction을 사용하게 하였고,
+;     코드상 BB의 순서를 실제 logic flow와는 다른 순서로 배치해놓음.
 define i32 @f(i32 %x, i32 %y, i32 %z, i32 %w) {
 ; CHECK-LABEL:  @f(i32 %x, i32 %y, i32 %z, i32 %w) {
 ; CHECK:        entry:
