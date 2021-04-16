@@ -132,7 +132,7 @@ void decideWinnerLoser(Value* Op0, Value* Op1){
                 op1argV = i;
             }
         }
-        // (1) inst vs. inst : first come, wins.
+        // (1) inst vs. inst : first executed, become winner.
         if (op0argV == -1 && op1argV == -1){
             int op0instV = -1;
             int op1instV = -1;
@@ -146,7 +146,7 @@ void decideWinnerLoser(Value* Op0, Value* Op1){
             }
             loser = op0instV > op1instV ? Op0 : Op1;
             winner = op0instV > op1instV ? Op1 : Op0;
-        // (2) arg vs. arg : first come, wins. @f(i32 %y, i32 %x) -> %y wins.
+        // (2) arg vs. arg : first defined, become winner. @f(i32 %y, i32 %x) -> %y wins.
         }else if (op0argV != -1 && op1argV != -1){
             loser = op0argV > op1argV ? Op0 : Op1;
             winner = op0argV > op1argV ? Op1 : Op0;
