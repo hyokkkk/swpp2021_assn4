@@ -1,0 +1,841 @@
+----- run input.ll -----
+[debug]================ <BB label>: entry
+[debug]=====<Instruction run 시작>:   %apple = add i32 %buy, %hold
+[debug]        this is value(inst):   %apple = add i32 %buy, %hold
+[debug]              inst name:apple
+[debug]=====<Instruction run 시작>:   %hyundai = mul i32 %zonber, %tothemoon
+[debug]        this is value(inst):   %hyundai = mul i32 %zonber, %tothemoon
+[debug]              inst name:hyundai
+[debug]=====<Instruction run 시작>:   %cond0 = icmp eq i32 %apple, %samsung
+[debug]        this is value(inst):   %cond0 = icmp eq i32 %apple, %samsung
+[debug]              inst name:cond0
+
+[debug] ****** I found compare inst!:   %cond0 = icmp eq i32 %apple, %samsung
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0:   %apple = add i32 %buy, %hold
+[debug] Op0.getname(): apple
+[debug] Op1: i32 %samsung
+[debug] Op1.getname(): samsung
+[debug]--  %apple = add i32 %buy, %hold is argv[-1]
+[debug]--i32 %samsung is argv[4]
+
+[debug]  ** '  %apple = add i32 %buy, %hold' should be replaced by 'i32 %samsung'
+
+
+[debug] ** 4. find condUser:   br i1 %cond0, label %T, label %F
+[debug] num of operands: 3
+[debug] ---operand0: cond0
+[debug] ---operand1: F
+[debug] ---operand2: T
+[debug] >>> 여기로 뛸거야 >>> T
+[debug] ** 5. loserUsers:   %5 = call i32 @f(i32 %KAL, i32 %apple, i32 %samsung, i32 %kia, i32 %kakao, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: T
+[debug] successor[1]: F
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryentry,T) dominates TTTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond1 = icmp eq i32 %apple, %kia
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: T
+[debug] successor[1]: F
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryentry,T) dominates T!!!!!!!
+
+[debug] ** 5. loserUsers:   %kia = add i32 %apple, %kakao
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: T
+[debug] successor[1]: F
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryentry,T) dominates T!!!!!!!
+
+[debug] ** 5. loserUsers:   %kakao = add i32 %samsung, %apple
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: T
+[debug] successor[1]: F
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryentry,T) dominates T!!!!!!!
+
+[debug] ** 5. loserUsers:   %4 = call i32 @f(i32 %samsung, i32 %apple, i32 %hanmi, i32 %noksipja, i32 %hugel, i32 %hyundai)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: T
+[debug] successor[1]: F
+[debug] ** 5. loserUsers:   %naver = add i32 %apple, %noksipja
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: T
+[debug] successor[1]: F
+[debug] ** 5. loserUsers:   %3 = call i32 @f(i32 %noksipja, i32 %apple, i32 %hugel, i32 %samsung, i32 %tothemoon, i32 %hanmi)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: T
+[debug] successor[1]: F
+[debug] ** 5. loserUsers:   %hanmi = sub i32 %samsung, %apple
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: T
+[debug] successor[1]: F
+[debug] ** 5. loserUsers:   %2 = call i32 @f(i32 %apple, i32 %samsung, i32 %kia, i32 %kakao, i32 %KAL, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: T
+[debug] successor[1]: F
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryentry,T) dominates TTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %shinsegye = sub i32 %samsung, %apple
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: T
+[debug] successor[1]: F
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryentry,T) dominates TT!!!!!!!
+
+[debug] ** 5. loserUsers:   %1 = call i32 @f(i32 %samsung, i32 %apple, i32 %hyundai, i32 %sell, i32 %zonber, i32 %tothemoon)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: T
+[debug] successor[1]: F
+[debug] ** 5. loserUsers:   %0 = call i32 @f(i32 %kakao, i32 %apple, i32 %samsung, i32 %kia, i32 %KAL, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: T
+[debug] successor[1]: F
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryentry,T) dominates TTTF!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond0 = icmp eq i32 %apple, %samsung
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: T
+[debug] successor[1]: F
+[debug]=====<Instruction run 시작>:   br i1 %cond0, label %T, label %F
+[debug]        this is value(inst):   br i1 %cond0, label %T, label %F
+[debug]              inst name:
+[debug]================ <BB label>: TTTF
+[debug]=====<Instruction run 시작>:   %0 = call i32 @f(i32 %kakao, i32 %samsung, i32 %samsung, i32 %kia, i32 %KAL, i32 %shinsegye)
+[debug]        this is value(inst):   %0 = call i32 @f(i32 %kakao, i32 %samsung, i32 %samsung, i32 %kia, i32 %KAL, i32 %shinsegye)
+[debug]              inst name:
+[debug]=====<Instruction run 시작>:   br label %exit
+[debug]        this is value(inst):   br label %exit
+[debug]              inst name:
+[debug]================ <BB label>: exit
+[debug]=====<Instruction run 시작>:   %1 = call i32 @f(i32 %samsung, i32 %apple, i32 %hyundai, i32 %sell, i32 %zonber, i32 %tothemoon)
+[debug]        this is value(inst):   %1 = call i32 @f(i32 %samsung, i32 %apple, i32 %hyundai, i32 %sell, i32 %zonber, i32 %tothemoon)
+[debug]              inst name:
+[debug]=====<Instruction run 시작>:   ret i32 0
+[debug]        this is value(inst):   ret i32 0
+[debug]              inst name:
+[debug]================ <BB label>: TT
+[debug]=====<Instruction run 시작>:   %KAL = add i32 %kakao, %kia
+[debug]        this is value(inst):   %KAL = add i32 %kakao, %kia
+[debug]              inst name:KAL
+[debug]=====<Instruction run 시작>:   %shinsegye = sub i32 %samsung, %samsung
+[debug]        this is value(inst):   %shinsegye = sub i32 %samsung, %samsung
+[debug]              inst name:shinsegye
+[debug]=====<Instruction run 시작>:   %cond3 = icmp eq i32 %zonber, %samsung
+[debug]        this is value(inst):   %cond3 = icmp eq i32 %zonber, %samsung
+[debug]              inst name:cond3
+
+[debug] ****** I found compare inst!:   %cond3 = icmp eq i32 %zonber, %samsung
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0: i32 %zonber
+[debug] Op0.getname(): zonber
+[debug] Op1: i32 %samsung
+[debug] Op1.getname(): samsung
+[debug]--i32 %zonber is argv[0]
+[debug]--i32 %samsung is argv[4]
+
+[debug]  ** 'i32 %samsung' should be replaced by 'i32 %zonber'
+
+
+[debug] ** 4. find condUser:   br i1 %cond3, label %TTT, label %exit
+[debug] num of operands: 3
+[debug] ---operand0: cond3
+[debug] ---operand1: exit
+[debug] ---operand2: TTT
+[debug] >>> 여기로 뛸거야 >>> TTT
+[debug] ** 5. loserUsers:   %0 = call i32 @f(i32 %kakao, i32 %samsung, i32 %samsung, i32 %kia, i32 %KAL, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryTT,TTT) dominates TTTF!!!!!!!
+
+[debug] ** 5. loserUsers:   %shinsegye = sub i32 %samsung, %samsung
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %2 = call i32 @f(i32 %samsung, i32 %samsung, i32 %kia, i32 %kakao, i32 %KAL, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryTT,TTT) dominates TTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %kakao = add i32 %samsung, %samsung
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %kia = add i32 %samsung, %kakao
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %cond1 = icmp eq i32 %samsung, %kia
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %5 = call i32 @f(i32 %KAL, i32 %samsung, i32 %samsung, i32 %kia, i32 %kakao, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryTT,TTT) dominates TTTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %5 = call i32 @f(i32 %KAL, i32 %zonber, i32 %samsung, i32 %kia, i32 %kakao, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryTT,TTT) dominates TTTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %kakao = add i32 %samsung, %samsung
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %4 = call i32 @f(i32 %samsung, i32 %apple, i32 %hanmi, i32 %noksipja, i32 %hugel, i32 %hyundai)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %hugel = mul i32 %samsung, %hanmi
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %3 = call i32 @f(i32 %noksipja, i32 %apple, i32 %hugel, i32 %samsung, i32 %tothemoon, i32 %hanmi)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %hanmi = sub i32 %samsung, %apple
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %2 = call i32 @f(i32 %zonber, i32 %samsung, i32 %kia, i32 %kakao, i32 %KAL, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryTT,TTT) dominates TTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond3 = icmp eq i32 %zonber, %samsung
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %shinsegye = sub i32 %samsung, %samsung
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %1 = call i32 @f(i32 %samsung, i32 %apple, i32 %hyundai, i32 %sell, i32 %zonber, i32 %tothemoon)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %0 = call i32 @f(i32 %kakao, i32 %zonber, i32 %samsung, i32 %kia, i32 %KAL, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryTT,TTT) dominates TTTF!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond0 = icmp eq i32 %apple, %samsung
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTT
+[debug] successor[1]: exit
+[debug]=====<Instruction run 시작>:   br i1 %cond3, label %TTT, label %exit
+[debug]        this is value(inst):   br i1 %cond3, label %TTT, label %exit
+[debug]              inst name:
+[debug]================ <BB label>: TTT
+[debug]=====<Instruction run 시작>:   %2 = call i32 @f(i32 %zonber, i32 %zonber, i32 %kia, i32 %kakao, i32 %KAL, i32 %shinsegye)
+[debug]        this is value(inst):   %2 = call i32 @f(i32 %zonber, i32 %zonber, i32 %kia, i32 %kakao, i32 %KAL, i32 %shinsegye)
+[debug]              inst name:
+[debug]=====<Instruction run 시작>:   %cond7 = icmp eq i32 %KAL, %kia
+[debug]        this is value(inst):   %cond7 = icmp eq i32 %KAL, %kia
+[debug]              inst name:cond7
+
+[debug] ****** I found compare inst!:   %cond7 = icmp eq i32 %KAL, %kia
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0:   %KAL = add i32 %kakao, %kia
+[debug] Op0.getname(): KAL
+[debug] Op1:   %kia = add i32 %samsung, %kakao
+[debug] Op1.getname(): kia
+[debug]--  %KAL = add i32 %kakao, %kia is argv[-1]
+[debug]--  %kia = add i32 %samsung, %kakao is argv[-1]
+
+[debug]--  %KAL = add i32 %kakao, %kia is inst[8]
+[debug]--  %kia = add i32 %samsung, %kakao is inst[29]
+
+[debug] **** checkInstdominance
+T dominates TT!
+[debug]  ** '  %KAL = add i32 %kakao, %kia' should be replaced by '  %kia = add i32 %samsung, %kakao'
+
+
+[debug] ** 4. find condUser:   br i1 %cond7, label %TTTT, label %TTTF
+[debug] num of operands: 3
+[debug] ---operand0: cond7
+[debug] ---operand1: TTTF
+[debug] ---operand2: TTTT
+[debug] >>> 여기로 뛸거야 >>> TTTT
+[debug] ** 5. loserUsers:   %5 = call i32 @f(i32 %KAL, i32 %zonber, i32 %zonber, i32 %kia, i32 %kakao, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTTT
+[debug] successor[1]: TTTF
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryTTT,TTTT) dominates TTTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond7 = icmp eq i32 %KAL, %kia
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTTT
+[debug] successor[1]: TTTF
+[debug] ** 5. loserUsers:   %2 = call i32 @f(i32 %zonber, i32 %zonber, i32 %kia, i32 %kakao, i32 %KAL, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTTT
+[debug] successor[1]: TTTF
+[debug] ** 5. loserUsers:   %0 = call i32 @f(i32 %kakao, i32 %zonber, i32 %zonber, i32 %kia, i32 %KAL, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TTTT
+[debug] successor[1]: TTTF
+[debug]=====<Instruction run 시작>:   br i1 %cond7, label %TTTT, label %TTTF
+[debug]        this is value(inst):   br i1 %cond7, label %TTTT, label %TTTF
+[debug]              inst name:
+[debug]================ <BB label>: F
+[debug]=====<Instruction run 시작>:   %hanmi = sub i32 %samsung, %apple
+[debug]        this is value(inst):   %hanmi = sub i32 %samsung, %apple
+[debug]              inst name:hanmi
+[debug]=====<Instruction run 시작>:   %noksipja = mul i32 %sell, %zonber
+[debug]        this is value(inst):   %noksipja = mul i32 %sell, %zonber
+[debug]              inst name:noksipja
+[debug]=====<Instruction run 시작>:   %cond2 = icmp eq i32 %noksipja, %hanmi
+[debug]        this is value(inst):   %cond2 = icmp eq i32 %noksipja, %hanmi
+[debug]              inst name:cond2
+
+[debug] ****** I found compare inst!:   %cond2 = icmp eq i32 %noksipja, %hanmi
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0:   %noksipja = mul i32 %sell, %zonber
+[debug] Op0.getname(): noksipja
+[debug] Op1:   %hanmi = sub i32 %samsung, %apple
+[debug] Op1.getname(): hanmi
+[debug]--  %noksipja = mul i32 %sell, %zonber is argv[-1]
+[debug]--  %hanmi = sub i32 %samsung, %apple is argv[-1]
+
+[debug]--  %noksipja = mul i32 %sell, %zonber is inst[16]
+[debug]--  %hanmi = sub i32 %samsung, %apple is inst[15]
+
+[debug]they are in the same BB 
+[debug]  ** '  %noksipja = mul i32 %sell, %zonber' should be replaced by '  %hanmi = sub i32 %samsung, %apple'
+
+
+[debug] ** 4. find condUser:   br i1 %cond2, label %FT, label %exit
+[debug] num of operands: 3
+[debug] ---operand0: cond2
+[debug] ---operand1: exit
+[debug] ---operand2: FT
+[debug] >>> 여기로 뛸거야 >>> FT
+[debug] ** 5. loserUsers:   %4 = call i32 @f(i32 %samsung, i32 %apple, i32 %hanmi, i32 %noksipja, i32 %hugel, i32 %hyundai)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryF,FT) dominates FTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond5 = icmp eq i32 %hyundai, %noksipja
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryF,FT) dominates FT!!!!!!!
+
+[debug] ** 5. loserUsers:   %naver = add i32 %apple, %noksipja
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryF,FT) dominates FT!!!!!!!
+
+[debug] ** 5. loserUsers:   %3 = call i32 @f(i32 %noksipja, i32 %apple, i32 %hugel, i32 %samsung, i32 %tothemoon, i32 %hanmi)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryF,FT) dominates FTF_FTTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond2 = icmp eq i32 %noksipja, %hanmi
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FT
+[debug] successor[1]: exit
+[debug]=====<Instruction run 시작>:   br i1 %cond2, label %FT, label %exit
+[debug]        this is value(inst):   br i1 %cond2, label %FT, label %exit
+[debug]              inst name:
+[debug]================ <BB label>: FTF_FTTT
+[debug]=====<Instruction run 시작>:   %3 = call i32 @f(i32 %hanmi, i32 %apple, i32 %hugel, i32 %samsung, i32 %tothemoon, i32 %hanmi)
+[debug]        this is value(inst):   %3 = call i32 @f(i32 %hanmi, i32 %apple, i32 %hugel, i32 %samsung, i32 %tothemoon, i32 %hanmi)
+[debug]              inst name:
+[debug]=====<Instruction run 시작>:   br label %exit
+[debug]        this is value(inst):   br label %exit
+[debug]              inst name:
+[debug]================ <BB label>: FT
+[debug]=====<Instruction run 시작>:   %hugel = mul i32 %samsung, %hanmi
+[debug]        this is value(inst):   %hugel = mul i32 %samsung, %hanmi
+[debug]              inst name:hugel
+[debug]=====<Instruction run 시작>:   %naver = add i32 %apple, %hanmi
+[debug]        this is value(inst):   %naver = add i32 %apple, %hanmi
+[debug]              inst name:naver
+[debug]=====<Instruction run 시작>:   %cond5 = icmp eq i32 %hyundai, %hanmi
+[debug]        this is value(inst):   %cond5 = icmp eq i32 %hyundai, %hanmi
+[debug]              inst name:cond5
+
+[debug] ****** I found compare inst!:   %cond5 = icmp eq i32 %hyundai, %hanmi
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0:   %hyundai = mul i32 %zonber, %tothemoon
+[debug] Op0.getname(): hyundai
+[debug] Op1:   %hanmi = sub i32 %samsung, %apple
+[debug] Op1.getname(): hanmi
+[debug]--  %hyundai = mul i32 %zonber, %tothemoon is argv[-1]
+[debug]--  %hanmi = sub i32 %samsung, %apple is argv[-1]
+
+[debug]--  %hyundai = mul i32 %zonber, %tothemoon is inst[1]
+[debug]--  %hanmi = sub i32 %samsung, %apple is inst[15]
+
+[debug] **** checkInstdominance
+entry dominates F!
+[debug]  ** '  %hanmi = sub i32 %samsung, %apple' should be replaced by '  %hyundai = mul i32 %zonber, %tothemoon'
+
+
+[debug] ** 4. find condUser:   br i1 %cond5, label %FTT, label %FTF_FTTT
+[debug] num of operands: 3
+[debug] ---operand0: cond5
+[debug] ---operand1: FTF_FTTT
+[debug] ---operand2: FTT
+[debug] >>> 여기로 뛸거야 >>> FTT
+[debug] ** 5. loserUsers:   %3 = call i32 @f(i32 %hanmi, i32 %apple, i32 %hugel, i32 %samsung, i32 %tothemoon, i32 %hanmi)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FTT
+[debug] successor[1]: FTF_FTTT
+[debug] ** 5. loserUsers:   %naver = add i32 %apple, %hanmi
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FTT
+[debug] successor[1]: FTF_FTTT
+[debug] ** 5. loserUsers:   %cond5 = icmp eq i32 %hyundai, %hanmi
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FTT
+[debug] successor[1]: FTF_FTTT
+[debug] ** 5. loserUsers:   %4 = call i32 @f(i32 %samsung, i32 %apple, i32 %hanmi, i32 %hanmi, i32 %hugel, i32 %hyundai)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FTT
+[debug] successor[1]: FTF_FTTT
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryFT,FTT) dominates FTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond6 = icmp eq i32 %hugel, %hanmi
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FTT
+[debug] successor[1]: FTF_FTTT
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryFT,FTT) dominates FTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %4 = call i32 @f(i32 %samsung, i32 %apple, i32 %hanmi, i32 %hyundai, i32 %hugel, i32 %hyundai)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FTT
+[debug] successor[1]: FTF_FTTT
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryFT,FTT) dominates FTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %hugel = mul i32 %samsung, %hanmi
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FTT
+[debug] successor[1]: FTF_FTTT
+[debug] ** 5. loserUsers:   %3 = call i32 @f(i32 %hanmi, i32 %apple, i32 %hugel, i32 %samsung, i32 %tothemoon, i32 %hanmi)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FTT
+[debug] successor[1]: FTF_FTTT
+[debug] ** 5. loserUsers:   %cond2 = icmp eq i32 %noksipja, %hanmi
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FTT
+[debug] successor[1]: FTF_FTTT
+[debug]=====<Instruction run 시작>:   br i1 %cond5, label %FTT, label %FTF_FTTT
+[debug]        this is value(inst):   br i1 %cond5, label %FTT, label %FTF_FTTT
+[debug]              inst name:
+[debug]================ <BB label>: FTT
+[debug]=====<Instruction run 시작>:   %4 = call i32 @f(i32 %samsung, i32 %apple, i32 %hyundai, i32 %hyundai, i32 %hugel, i32 %hyundai)
+[debug]        this is value(inst):   %4 = call i32 @f(i32 %samsung, i32 %apple, i32 %hyundai, i32 %hyundai, i32 %hugel, i32 %hyundai)
+[debug]              inst name:
+[debug]=====<Instruction run 시작>:   %cond6 = icmp eq i32 %hugel, %hyundai
+[debug]        this is value(inst):   %cond6 = icmp eq i32 %hugel, %hyundai
+[debug]              inst name:cond6
+
+[debug] ****** I found compare inst!:   %cond6 = icmp eq i32 %hugel, %hyundai
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0:   %hugel = mul i32 %samsung, %hanmi
+[debug] Op0.getname(): hugel
+[debug] Op1:   %hyundai = mul i32 %zonber, %tothemoon
+[debug] Op1.getname(): hyundai
+[debug]--  %hugel = mul i32 %samsung, %hanmi is argv[-1]
+[debug]--  %hyundai = mul i32 %zonber, %tothemoon is argv[-1]
+
+[debug]--  %hugel = mul i32 %samsung, %hanmi is inst[21]
+[debug]--  %hyundai = mul i32 %zonber, %tothemoon is inst[1]
+
+[debug] **** checkInstdominance
+entry dominates FT!
+[debug]  ** '  %hugel = mul i32 %samsung, %hanmi' should be replaced by '  %hyundai = mul i32 %zonber, %tothemoon'
+
+
+[debug] ** 4. find condUser:   br i1 %cond6, label %FTF_FTTT, label %exit
+[debug] num of operands: 3
+[debug] ---operand0: cond6
+[debug] ---operand1: exit
+[debug] ---operand2: FTF_FTTT
+[debug] >>> 여기로 뛸거야 >>> FTF_FTTT
+[debug] ** 5. loserUsers:   %cond6 = icmp eq i32 %hugel, %hyundai
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FTF_FTTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %4 = call i32 @f(i32 %samsung, i32 %apple, i32 %hyundai, i32 %hyundai, i32 %hugel, i32 %hyundai)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FTF_FTTT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %3 = call i32 @f(i32 %hanmi, i32 %apple, i32 %hugel, i32 %samsung, i32 %tothemoon, i32 %hanmi)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: FTF_FTTT
+[debug] successor[1]: exit
+[debug]=====<Instruction run 시작>:   br i1 %cond6, label %FTF_FTTT, label %exit
+[debug]        this is value(inst):   br i1 %cond6, label %FTF_FTTT, label %exit
+[debug]              inst name:
+[debug]================ <BB label>: T
+[debug]=====<Instruction run 시작>:   %kakao = add i32 %samsung, %samsung
+[debug]        this is value(inst):   %kakao = add i32 %samsung, %samsung
+[debug]              inst name:kakao
+[debug]=====<Instruction run 시작>:   %kia = add i32 %samsung, %kakao
+[debug]        this is value(inst):   %kia = add i32 %samsung, %kakao
+[debug]              inst name:kia
+[debug]=====<Instruction run 시작>:   %cond1 = icmp eq i32 %samsung, %kia
+[debug]        this is value(inst):   %cond1 = icmp eq i32 %samsung, %kia
+[debug]              inst name:cond1
+
+[debug] ****** I found compare inst!:   %cond1 = icmp eq i32 %samsung, %kia
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0: i32 %samsung
+[debug] Op0.getname(): samsung
+[debug] Op1:   %kia = add i32 %samsung, %kakao
+[debug] Op1.getname(): kia
+[debug]--i32 %samsung is argv[4]
+[debug]--  %kia = add i32 %samsung, %kakao is argv[-1]
+
+[debug]  ** '  %kia = add i32 %samsung, %kakao' should be replaced by 'i32 %samsung'
+
+
+[debug] ** 4. find condUser:   br i1 %cond1, label %TT, label %exit
+[debug] num of operands: 3
+[debug] ---operand0: cond1
+[debug] ---operand1: exit
+[debug] ---operand2: TT
+[debug] >>> 여기로 뛸거야 >>> TT
+[debug] ** 5. loserUsers:   %5 = call i32 @f(i32 %kia, i32 %zonber, i32 %zonber, i32 %kia, i32 %kakao, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryT,TT) dominates TTTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %5 = call i32 @f(i32 %samsung, i32 %zonber, i32 %zonber, i32 %kia, i32 %kakao, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryT,TT) dominates TTTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond1 = icmp eq i32 %samsung, %kia
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TT
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %0 = call i32 @f(i32 %kakao, i32 %zonber, i32 %zonber, i32 %kia, i32 %KAL, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryT,TT) dominates TTTF!!!!!!!
+
+[debug] ** 5. loserUsers:   %KAL = add i32 %kakao, %kia
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryT,TT) dominates TT!!!!!!!
+
+[debug] ** 5. loserUsers:   %2 = call i32 @f(i32 %zonber, i32 %zonber, i32 %kia, i32 %kakao, i32 %KAL, i32 %shinsegye)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryT,TT) dominates TTT!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond7 = icmp eq i32 %KAL, %kia
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: TT
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryT,TT) dominates TTT!!!!!!!
+
+[debug]=====<Instruction run 시작>:   br i1 %cond1, label %TT, label %exit
+[debug]        this is value(inst):   br i1 %cond1, label %TT, label %exit
+[debug]              inst name:
+[debug]================ <BB label>: TTTT
+[debug]=====<Instruction run 시작>:   %5 = call i32 @f(i32 %samsung, i32 %zonber, i32 %zonber, i32 %samsung, i32 %kakao, i32 %shinsegye)
+[debug]        this is value(inst):   %5 = call i32 @f(i32 %samsung, i32 %zonber, i32 %zonber, i32 %samsung, i32 %kakao, i32 %shinsegye)
+[debug]              inst name:
+[debug]=====<Instruction run 시작>:   br label %exit
+[debug]        this is value(inst):   br label %exit
+[debug]              inst name:
+; ModuleID = './mycheck/check2.ll'
+source_filename = "./mycheck/check2.ll"
+
+define i32 @f(i32 %zonber, i32 %buy, i32 %hold, i32 %sell, i32 %samsung, i32 %tothemoon) {
+entry:
+  %apple = add i32 %buy, %hold
+  %hyundai = mul i32 %zonber, %tothemoon
+  %cond0 = icmp eq i32 %apple, %samsung
+  br i1 %cond0, label %T, label %F
+
+TTTF:                                             ; preds = %TTT
+  %0 = call i32 @f(i32 %kakao, i32 %zonber, i32 %zonber, i32 %samsung, i32 %KAL, i32 %shinsegye)
+  br label %exit
+
+exit:                                             ; preds = %TTTT, %T, %FTT, %FTF_FTTT, %F, %TT, %TTTF
+  %1 = call i32 @f(i32 %samsung, i32 %apple, i32 %hyundai, i32 %sell, i32 %zonber, i32 %tothemoon)
+  ret i32 0
+
+TT:                                               ; preds = %T
+  %KAL = add i32 %kakao, %samsung
+  %shinsegye = sub i32 %samsung, %samsung
+  %cond3 = icmp eq i32 %zonber, %samsung
+  br i1 %cond3, label %TTT, label %exit
+
+TTT:                                              ; preds = %TT
+  %2 = call i32 @f(i32 %zonber, i32 %zonber, i32 %samsung, i32 %kakao, i32 %KAL, i32 %shinsegye)
+  %cond7 = icmp eq i32 %KAL, %samsung
+  br i1 %cond7, label %TTTT, label %TTTF
+
+F:                                                ; preds = %entry
+  %hanmi = sub i32 %samsung, %apple
+  %noksipja = mul i32 %sell, %zonber
+  %cond2 = icmp eq i32 %noksipja, %hanmi
+  br i1 %cond2, label %FT, label %exit
+
+FTF_FTTT:                                         ; preds = %FTT, %FT
+  %3 = call i32 @f(i32 %hanmi, i32 %apple, i32 %hugel, i32 %samsung, i32 %tothemoon, i32 %hanmi)
+  br label %exit
+
+FT:                                               ; preds = %F
+  %hugel = mul i32 %samsung, %hanmi
+  %naver = add i32 %apple, %hanmi
+  %cond5 = icmp eq i32 %hyundai, %hanmi
+  br i1 %cond5, label %FTT, label %FTF_FTTT
+
+FTT:                                              ; preds = %FT
+  %4 = call i32 @f(i32 %samsung, i32 %apple, i32 %hyundai, i32 %hyundai, i32 %hugel, i32 %hyundai)
+  %cond6 = icmp eq i32 %hugel, %hyundai
+  br i1 %cond6, label %FTF_FTTT, label %exit
+
+T:                                                ; preds = %entry
+  %kakao = add i32 %samsung, %samsung
+  %kia = add i32 %samsung, %kakao
+  %cond1 = icmp eq i32 %samsung, %kia
+  br i1 %cond1, label %TT, label %exit
+
+TTTT:                                             ; preds = %TTT
+  %5 = call i32 @f(i32 %samsung, i32 %zonber, i32 %zonber, i32 %samsung, i32 %kakao, i32 %shinsegye)
+  br label %exit
+}
