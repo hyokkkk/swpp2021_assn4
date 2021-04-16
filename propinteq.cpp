@@ -74,7 +74,7 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool i
     if (!(match(&I, m_ICmp(Pred, m_Value(Op0), m_Value(Op1))) && Pred == ICmpInst::ICMP_EQ)) {
          return ;
     }
-    /******* codes below are only executed when matched with `%cond = icmp eq (v1, v2)` ********/
+    /****** codes below are only executed when matched with `%cond = icmp eq (v1, v2)` ********/
 
     // 3. check Op0, Op1 are whether 'arg' or 'inst', and decide who's the "winner" and "loser"
     decideWinnerLoser(I.getOperand(0), I.getOperand(1));
@@ -98,7 +98,8 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool i
         }
 
         // 5. find "loserUsers"
-        for (auto loserItr = loser->use_begin(), loserEnd = loser->use_end(); loserItr != loserEnd;){
+        for (auto loserItr = loser->use_begin(), loserEnd = loser->use_end();
+                                                        loserItr != loserEnd;){
             Use& loserUse = *loserItr++;
             User* loserUser = loserUse.getUser();
             Instruction* targetInst = dyn_cast<Instruction>(loserUser);
