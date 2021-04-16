@@ -2,6 +2,10 @@
 ; Feel free to add arguments to @f, so its signature becomes @f(i32 %x, ...).
 ; But, this file should contain one function @f() only.
 ; FileCheck syntax: https://llvm.org/docs/CommandGuide/FileCheck.html
+
+; Case : instruction vs. instruction.
+; *** instruction dominance 따질 때 단순히 ir code상 선후관계로 판단하는 것을
+;     catch 하기 위해 BB 순서를 control flow와 다르게 섞어놓음.
 define i32 @f(i32 %x, i32 %y, i32 %z, i32 %w) {
 ; CHECK-LABEL:  @f(i32 %x, i32 %y, i32 %z, i32 %w) {
 ; CHECK:        entry:
