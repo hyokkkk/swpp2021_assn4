@@ -68,11 +68,11 @@ PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
     }
     // 1. <BB into BFS vector by BFS order>
     sortBBbyBFSorder(F);
-//    for (auto BBp : BFS){
-//        for (auto &I : *BBp){
-//            replaceEquality(F, FAM, &I);
-//        }
-//    }
+    for (auto BBp : BFS){
+        for (auto &I : *BBp){
+            replaceEquality(F, FAM, &I);
+        }
+    }
 
 
 

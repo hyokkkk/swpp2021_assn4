@@ -1,6 +1,160 @@
+----- build -----
+----- run input.ll -----
+[debug] basic block list size : 4
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond, label %BB_true, label %BB_false
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: entry
+[debug] === 이게 branch instruction terminator:   br i1 %cond, label %BB_true, label %BB_false
+
+[debug] === successor 갯수: 2
+이거 타입이 뭐임 BB_true
+[debug] ** BBlist에서 이름 같은 BB 찾음: BB_true
+[debug] ** BBlist에서 이름 같은 BB 찾음: BB_false
+[debug] ++++++ BFS elements ++++++ 
+[debug] +++++++ entry
+[debug] +++++++ BB_true
+[debug] +++++++ BB_false
+
+[debug] ++++++ visited elements ++++++ 
+[debug] +++++++ entry
+[debug] +++++++ BB_true
+[debug] +++++++ BB_false
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %BB_end
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: BB_true
+[debug] === 이게 branch instruction terminator:   br label %BB_end
+
+[debug] === successor 갯수: 1
+이거 타입이 뭐임 BB_end
+[debug] ** BBlist에서 이름 같은 BB 찾음: BB_end
+[debug] ++++++ BFS elements ++++++ 
+[debug] +++++++ entry
+[debug] +++++++ BB_true
+[debug] +++++++ BB_false
+[debug] +++++++ BB_end
+
+[debug] ++++++ visited elements ++++++ 
+[debug] +++++++ entry
+[debug] +++++++ BB_true
+[debug] +++++++ BB_false
+[debug] +++++++ BB_end
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %BB_end
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: BB_false
+[debug] === 이게 branch instruction terminator:   br label %BB_end
+
+[debug] === successor 갯수: 1
+이거 타입이 뭐임 BB_end
+[debug] ** BBlist에서 이름 같은 BB 찾음: BB_end
+[debug] ++++++ BFS elements ++++++ 
+[debug] +++++++ entry
+[debug] +++++++ BB_true
+[debug] +++++++ BB_false
+[debug] +++++++ BB_end
+
+[debug] ++++++ visited elements ++++++ 
+[debug] +++++++ entry
+[debug] +++++++ BB_true
+[debug] +++++++ BB_false
+[debug] +++++++ BB_end
+[debug]        this is value(inst):   %cond = icmp eq i32 %x, %y
+[debug]              inst name:cond
+
+[debug] ****** I found compare inst!:   %cond = icmp eq i32 %x, %y
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0: i32 %x
+[debug] Op0.getname(): x
+[debug] Op1: i32 %y
+[debug] Op1.getname(): y
+[debug]--i32 %x is argv[0]
+[debug]--i32 %y is argv[1]
+
+[debug]  ** 'i32 %y' should be replaced by 'i32 %x'
+
+
+[debug] ** 4. find condUser:   br i1 %cond, label %BB_true, label %BB_false
+[debug] num of operands: 3
+[debug] ---operand0: cond
+[debug] ---operand1: BB_false
+[debug] ---operand2: BB_true
+[debug] >>> 여기로 뛸거야 >>> BB_true
+[debug] ** 5. loserUsers:   call void @f(i32 %x, i32 %y)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: BB_true
+[debug] successor[1]: BB_false
+[debug] ** 5. loserUsers:   call void @f(i32 %x, i32 %y)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: BB_true
+[debug] successor[1]: BB_false
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entryentry,BB_true) dominates BB_true!!!!!!!
+
+[debug] ** 5. loserUsers:   call void @f(i32 %x, i32 %y)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: BB_true
+[debug] successor[1]: BB_false
+[debug] ** 5. loserUsers:   %cond = icmp eq i32 %x, %y
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: BB_true
+[debug] successor[1]: BB_false
+[debug]        this is value(inst):   br i1 %cond, label %BB_true, label %BB_false
+[debug]              inst name:
+[debug]        this is value(inst):   call void @f(i32 %x, i32 %x)
+[debug]              inst name:
+[debug]        this is value(inst):   br label %BB_end
+[debug]              inst name:
+[debug]        this is value(inst):   call void @f(i32 %x, i32 %y)
+[debug]              inst name:
+[debug]        this is value(inst):   br label %BB_end
+[debug]              inst name:
+[debug]        this is value(inst):   call void @f(i32 %x, i32 %y)
+[debug]              inst name:
+[debug]        this is value(inst):   ret void
+[debug]              inst name:
+; ModuleID = 'input.ll'
+source_filename = "input.ll"
+
+define void @f(i32 %x, i32 %y) {
+entry:
+  %cond = icmp eq i32 %x, %y
+  br i1 %cond, label %BB_true, label %BB_false
+
+BB_end:                                           ; preds = %BB_false, %BB_true
+  call void @f(i32 %x, i32 %y)
+  ret void
+
+BB_true:                                          ; preds = %entry
+  call void @f(i32 %x, i32 %x)
+  br label %BB_end
+
+BB_false:                                         ; preds = %entry
+  call void @f(i32 %x, i32 %y)
+  br label %BB_end
+}
 ----- test -----
 == data/check1.ll ==
 [debug] basic block list size : 4
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond, label %bb_true, label %bb_false
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: 
 [debug] === 이게 branch instruction terminator:   br i1 %cond, label %bb_true, label %bb_false
 
 [debug] === successor 갯수: 2
@@ -16,6 +170,10 @@
 [debug] +++++++ 
 [debug] +++++++ bb_true
 [debug] +++++++ bb_false
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_true
 [debug] === 이게 branch instruction terminator:   br label %bb_exit
 
 [debug] === successor 갯수: 1
@@ -32,6 +190,10 @@
 [debug] +++++++ bb_true
 [debug] +++++++ bb_false
 [debug] +++++++ bb_exit
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_false
 [debug] === 이게 branch instruction terminator:   br label %bb_exit
 
 [debug] === successor 갯수: 1
@@ -125,6 +287,10 @@
 [debug]              inst name:
 == data/check10.ll ==
 [debug] basic block list size : 4
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond, label %loop, label %exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: 
 [debug] === 이게 branch instruction terminator:   br i1 %cond, label %loop, label %exit
 
 [debug] === successor 갯수: 2
@@ -140,6 +306,10 @@
 [debug] +++++++ 
 [debug] +++++++ loop
 [debug] +++++++ exit
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond2, label %latch, label %exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: loop
 [debug] === 이게 branch instruction terminator:   br i1 %cond2, label %latch, label %exit
 
 [debug] === successor 갯수: 2
@@ -157,6 +327,10 @@
 [debug] +++++++ loop
 [debug] +++++++ exit
 [debug] +++++++ latch
+[debug] <<<이건 그냥 inst만 받은거>>>:   ret void
+
+이게 ret이 나와야 하는데ret
+오잉 여기 안 들어와??
 [debug]        this is value(inst):   %cond = icmp eq i32 %a, %b
 [debug]              inst name:cond
 
@@ -284,8 +458,10 @@
 [debug]              inst name:
 == data/check11.ll ==
 [debug] basic block list size : 3
-[debug] === 이게 branch instruction terminator:   br i1 %cond, label %bb_true, label %bb_false== data/check2.ll ==
-[debug] basic block list size : 4
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond, label %bb_true, label %bb_false
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: 
 [debug] === 이게 branch instruction terminator:   br i1 %cond, label %bb_true, label %bb_false
 
 [debug] === successor 갯수: 2
@@ -301,6 +477,47 @@
 [debug] +++++++ 
 [debug] +++++++ bb_true
 [debug] +++++++ bb_false
+[debug] <<<이건 그냥 inst만 받은거>>>:   ret void
+
+이게 ret이 나와야 하는데ret
+오잉 여기 안 들어와??
+[debug]        this is value(inst):   %cond = icmp ne i32 %a, %b
+[debug]              inst name:cond
+[debug]        this is value(inst):   br i1 %cond, label %bb_true, label %bb_false
+[debug]              inst name:
+[debug]        this is value(inst):   call void @f(i32 %a, i32 %b)
+[debug]              inst name:
+[debug]        this is value(inst):   ret void
+[debug]              inst name:
+[debug]        this is value(inst):   call void @f(i32 %a, i32 %b)
+[debug]              inst name:
+[debug]        this is value(inst):   ret void
+[debug]              inst name:
+== data/check2.ll ==
+[debug] basic block list size : 4
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond, label %bb_true, label %bb_false
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: 
+[debug] === 이게 branch instruction terminator:   br i1 %cond, label %bb_true, label %bb_false
+
+[debug] === successor 갯수: 2
+이거 타입이 뭐임 bb_true
+[debug] ** BBlist에서 이름 같은 BB 찾음: bb_true
+[debug] ** BBlist에서 이름 같은 BB 찾음: bb_false
+[debug] ++++++ BFS elements ++++++ 
+[debug] +++++++ 
+[debug] +++++++ bb_true
+[debug] +++++++ bb_false
+
+[debug] ++++++ visited elements ++++++ 
+[debug] +++++++ 
+[debug] +++++++ bb_true
+[debug] +++++++ bb_false
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_true
 [debug] === 이게 branch instruction terminator:   br label %bb_exit
 
 [debug] === successor 갯수: 1
@@ -317,6 +534,10 @@
 [debug] +++++++ bb_true
 [debug] +++++++ bb_false
 [debug] +++++++ bb_exit
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_false
 [debug] === 이게 branch instruction terminator:   br label %bb_exit
 
 [debug] === successor 갯수: 1
@@ -403,6 +624,10 @@
 [debug]              inst name:
 == data/check3.ll ==
 [debug] basic block list size : 4
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond, label %bb_true, label %bb_false
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: 
 [debug] === 이게 branch instruction terminator:   br i1 %cond, label %bb_true, label %bb_false
 
 [debug] === successor 갯수: 2
@@ -418,6 +643,10 @@
 [debug] +++++++ 
 [debug] +++++++ bb_true
 [debug] +++++++ bb_false
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_true
 [debug] === 이게 branch instruction terminator:   br label %bb_exit
 
 [debug] === successor 갯수: 1
@@ -434,6 +663,10 @@
 [debug] +++++++ bb_true
 [debug] +++++++ bb_false
 [debug] +++++++ bb_exit
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_false
 [debug] === 이게 branch instruction terminator:   br label %bb_exit
 
 [debug] === successor 갯수: 1
@@ -528,6 +761,10 @@
 [debug]              inst name:
 == data/check4.ll ==
 [debug] basic block list size : 4
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond, label %bb_true, label %bb_false
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: 
 [debug] === 이게 branch instruction terminator:   br i1 %cond, label %bb_true, label %bb_false
 
 [debug] === successor 갯수: 2
@@ -543,6 +780,10 @@
 [debug] +++++++ 
 [debug] +++++++ bb_true
 [debug] +++++++ bb_false
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_true
 [debug] === 이게 branch instruction terminator:   br label %bb_exit
 
 [debug] === successor 갯수: 1
@@ -559,6 +800,10 @@
 [debug] +++++++ bb_true
 [debug] +++++++ bb_false
 [debug] +++++++ bb_exit
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_false
 [debug] === 이게 branch instruction terminator:   br label %bb_exit
 
 [debug] === successor 갯수: 1
@@ -660,6 +905,10 @@
 [debug]              inst name:
 == data/check5.ll ==
 [debug] basic block list size : 4
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond, label %bb_true, label %bb_false
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: 
 [debug] === 이게 branch instruction terminator:   br i1 %cond, label %bb_true, label %bb_false
 
 [debug] === successor 갯수: 2
@@ -675,6 +924,10 @@
 [debug] +++++++ 
 [debug] +++++++ bb_true
 [debug] +++++++ bb_false
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_true
 [debug] === 이게 branch instruction terminator:   br label %bb_exit
 
 [debug] === successor 갯수: 1
@@ -691,6 +944,10 @@
 [debug] +++++++ bb_true
 [debug] +++++++ bb_false
 [debug] +++++++ bb_exit
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_false
 [debug] === 이게 branch instruction terminator:   br label %bb_exit
 
 [debug] === successor 갯수: 1
@@ -779,6 +1036,10 @@
 [debug]              inst name:
 == data/check6.ll ==
 [debug] basic block list size : 4
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond, label %bb_true, label %bb_false
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: 
 [debug] === 이게 branch instruction terminator:   br i1 %cond, label %bb_true, label %bb_false
 
 [debug] === successor 갯수: 2
@@ -794,6 +1055,10 @@
 [debug] +++++++ 
 [debug] +++++++ bb_true
 [debug] +++++++ bb_false
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_true
 [debug] === 이게 branch instruction terminator:   br label %bb_exit
 
 [debug] === successor 갯수: 1
@@ -810,6 +1075,10 @@
 [debug] +++++++ bb_true
 [debug] +++++++ bb_false
 [debug] +++++++ bb_exit
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_false
 [debug] === 이게 branch instruction terminator:   br label %bb_exit
 
 [debug] === successor 갯수: 1
@@ -898,6 +1167,10 @@
 [debug]              inst name:
 == data/check7.ll ==
 [debug] basic block list size : 5
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond, label %bb_true, label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: 
 [debug] === 이게 branch instruction terminator:   br i1 %cond, label %bb_true, label %bb_exit
 
 [debug] === successor 갯수: 2
@@ -913,8 +1186,224 @@
 [debug] +++++++ 
 [debug] +++++++ bb_true
 [debug] +++++++ bb_exit
-[debug] === 이게 branch instruction terminator:   br i1 %cond2, label %bb_true2, label %bb_false== data/check8.ll ==
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond2, label %bb_true2, label %bb_false
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_true
+[debug] === 이게 branch instruction terminator:   br i1 %cond2, label %bb_true2, label %bb_false
+
+[debug] === successor 갯수: 2
+이거 타입이 뭐임 bb_true2
+[debug] ** BBlist에서 이름 같은 BB 찾음: bb_true2
+[debug] ** BBlist에서 이름 같은 BB 찾음: bb_false
+[debug] ++++++ BFS elements ++++++ 
+[debug] +++++++ 
+[debug] +++++++ bb_true
+[debug] +++++++ bb_exit
+[debug] +++++++ bb_true2
+[debug] +++++++ bb_false
+
+[debug] ++++++ visited elements ++++++ 
+[debug] +++++++ 
+[debug] +++++++ bb_true
+[debug] +++++++ bb_exit
+[debug] +++++++ bb_true2
+[debug] +++++++ bb_false
+[debug] <<<이건 그냥 inst만 받은거>>>:   ret i32 %b
+
+이게 ret이 나와야 하는데ret
+오잉 여기 안 들어와??
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_true2
+[debug] === 이게 branch instruction terminator:   br label %bb_exit
+
+[debug] === successor 갯수: 1
+이거 타입이 뭐임 bb_exit
+[debug] ** BBlist에서 이름 같은 BB 찾음: bb_exit
+[debug] ++++++ BFS elements ++++++ 
+[debug] +++++++ 
+[debug] +++++++ bb_true
+[debug] +++++++ bb_exit
+[debug] +++++++ bb_true2
+[debug] +++++++ bb_false
+
+[debug] ++++++ visited elements ++++++ 
+[debug] +++++++ 
+[debug] +++++++ bb_true
+[debug] +++++++ bb_exit
+[debug] +++++++ bb_true2
+[debug] +++++++ bb_false
+[debug]        this is value(inst):   %cond = icmp eq i32 %a, %b
+[debug]              inst name:cond
+
+[debug] ****** I found compare inst!:   %cond = icmp eq i32 %a, %b
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0: i32 %a
+[debug] Op0.getname(): a
+[debug] Op1: i32 %b
+[debug] Op1.getname(): b
+[debug]--i32 %a is argv[0]
+[debug]--i32 %b is argv[1]
+
+[debug]  ** 'i32 %b' should be replaced by 'i32 %a'
+
+
+[debug] ** 4. find condUser:   br i1 %cond, label %bb_true, label %bb_exit
+[debug] num of operands: 3
+[debug] ---operand0: cond
+[debug] ---operand1: bb_exit
+[debug] ---operand2: bb_true
+[debug] >>> 여기로 뛸거야 >>> bb_true
+[debug] ** 5. loserUsers:   ret i32 %b
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug] ** 5. loserUsers:   call void @f(i32 %a, i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug] ** 5. loserUsers:   call void @f(i32 %a, i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entry,bb_true) dominates bb_false!!!!!!!
+
+[debug] ** 5. loserUsers:   call void @f(i32 %a, i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entry,bb_true) dominates bb_true2!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond2 = icmp eq i32 %b, %c
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entry,bb_true) dominates bb_true!!!!!!!
+
+[debug] ** 5. loserUsers:   call void @f(i32 %a, i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entry,bb_true) dominates bb_true!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond = icmp eq i32 %a, %b
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug]        this is value(inst):   br i1 %cond, label %bb_true, label %bb_exit
+[debug]              inst name:
+[debug]        this is value(inst):   call void @f(i32 %a, i32 %a, i32 %c)
+[debug]              inst name:
+[debug]        this is value(inst):   %cond2 = icmp eq i32 %a, %c
+[debug]              inst name:cond2
+
+[debug] ****** I found compare inst!:   %cond2 = icmp eq i32 %a, %c
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0: i32 %a
+[debug] Op0.getname(): a
+[debug] Op1: i32 %c
+[debug] Op1.getname(): c
+[debug]--i32 %a is argv[0]
+[debug]--i32 %c is argv[2]
+
+[debug]  ** 'i32 %c' should be replaced by 'i32 %a'
+
+
+[debug] ** 4. find condUser:   br i1 %cond2, label %bb_true2, label %bb_false
+[debug] num of operands: 3
+[debug] ---operand0: cond2
+[debug] ---operand1: bb_false
+[debug] ---operand2: bb_true2
+[debug] >>> 여기로 뛸거야 >>> bb_true2
+[debug] ** 5. loserUsers:   call void @f(i32 %a, i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true2
+[debug] successor[1]: bb_false
+[debug] ** 5. loserUsers:   call void @f(i32 %a, i32 %a, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true2
+[debug] successor[1]: bb_false
+[debug] ** 5. loserUsers:   call void @f(i32 %a, i32 %a, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true2
+[debug] successor[1]: bb_false
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entrybb_true,bb_true2) dominates bb_true2!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond2 = icmp eq i32 %a, %c
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true2
+[debug] successor[1]: bb_false
+[debug] ** 5. loserUsers:   call void @f(i32 %a, i32 %a, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true2
+[debug] successor[1]: bb_false
+[debug]        this is value(inst):   br i1 %cond2, label %bb_true2, label %bb_false
+[debug]              inst name:
+[debug]        this is value(inst):   call void @f(i32 %a, i32 %b, i32 %c)
+[debug]              inst name:
+[debug]        this is value(inst):   ret i32 %b
+[debug]              inst name:
+[debug]        this is value(inst):   call void @f(i32 %a, i32 %a, i32 %a)
+[debug]              inst name:
+[debug]        this is value(inst):   br label %bb_exit
+[debug]              inst name:
+[debug]        this is value(inst):   call void @f(i32 %a, i32 %a, i32 %c)
+[debug]              inst name:
+[debug]        this is value(inst):   br label %bb_exit
+[debug]              inst name:
+== data/check8.ll ==
 [debug] basic block list size : 5
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond, label %bb_true, label %bb_exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: 
 [debug] === 이게 branch instruction terminator:   br i1 %cond, label %bb_true, label %bb_exit
 
 [debug] === successor 갯수: 2
@@ -930,12 +1419,304 @@
 [debug] +++++++ 
 [debug] +++++++ bb_true
 [debug] +++++++ bb_exit
-[debug] === 이게 branch instruction terminator:   br i1 %cond2, label %bb_true2, label %bb_false== data/check9.ll ==
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond2, label %bb_true2, label %bb_false
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: bb_true
+[debug] === 이게 branch instruction terminator:   br i1 %cond2, label %bb_true2, label %bb_false
+
+[debug] === successor 갯수: 2
+이거 타입이 뭐임 bb_true2
+[debug] ** BBlist에서 이름 같은 BB 찾음: bb_true2
+[debug] ** BBlist에서 이름 같은 BB 찾음: bb_false
+[debug] ++++++ BFS elements ++++++ 
+[debug] +++++++ 
+[debug] +++++++ bb_true
+[debug] +++++++ bb_exit
+[debug] +++++++ bb_true2
+[debug] +++++++ bb_false
+
+[debug] ++++++ visited elements ++++++ 
+[debug] +++++++ 
+[debug] +++++++ bb_true
+[debug] +++++++ bb_exit
+[debug] +++++++ bb_true2
+[debug] +++++++ bb_false
+[debug] <<<이건 그냥 inst만 받은거>>>:   ret i32 %a
+
+이게 ret이 나와야 하는데ret
+오잉 여기 안 들어와??
+[debug] <<<이건 그냥 inst만 받은거>>>:   ret i32 %c
+
+이게 ret이 나와야 하는데ret
+오잉 여기 안 들어와??
+[debug]        this is value(inst):   %a = call i32 @g(i32 %b, i32 %c)
+[debug]              inst name:a
+[debug]        this is value(inst):   %cond = icmp eq i32 %a, %b
+[debug]              inst name:cond
+
+[debug] ****** I found compare inst!:   %cond = icmp eq i32 %a, %b
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0:   %a = call i32 @g(i32 %b, i32 %c)
+[debug] Op0.getname(): a
+[debug] Op1: i32 %b
+[debug] Op1.getname(): b
+[debug]--  %a = call i32 @g(i32 %b, i32 %c) is argv[-1]
+[debug]--i32 %b is argv[0]
+
+[debug]  ** '  %a = call i32 @g(i32 %b, i32 %c)' should be replaced by 'i32 %b'
+
+
+[debug] ** 4. find condUser:   br i1 %cond, label %bb_true, label %bb_exit
+[debug] num of operands: 3
+[debug] ---operand0: cond
+[debug] ---operand1: bb_exit
+[debug] ---operand2: bb_true
+[debug] >>> 여기로 뛸거야 >>> bb_true
+[debug] ** 5. loserUsers:   ret i32 %a
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug] ** 5. loserUsers:   call void @f(i32 %a, i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug] ** 5. loserUsers:   ret i32 %a
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entry,bb_true) dominates bb_false!!!!!!!
+
+[debug] ** 5. loserUsers:   call void @f(i32 %a, i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entry,bb_true) dominates bb_false!!!!!!!
+
+[debug] ** 5. loserUsers:   call void @f(i32 %a, i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entry,bb_true) dominates bb_true2!!!!!!!
+
+[debug] ** 5. loserUsers:   call void @f(i32 %a, i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entry,bb_true) dominates bb_true!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond = icmp eq i32 %a, %b
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_exit
+[debug]        this is value(inst):   br i1 %cond, label %bb_true, label %bb_exit
+[debug]              inst name:
+[debug]        this is value(inst):   %cond2 = icmp eq i32 %b, %c
+[debug]              inst name:cond2
+
+[debug] ****** I found compare inst!:   %cond2 = icmp eq i32 %b, %c
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0: i32 %b
+[debug] Op0.getname(): b
+[debug] Op1: i32 %c
+[debug] Op1.getname(): c
+[debug]--i32 %b is argv[0]
+[debug]--i32 %c is argv[1]
+
+[debug]  ** 'i32 %c' should be replaced by 'i32 %b'
+
+
+[debug] ** 4. find condUser:   br i1 %cond2, label %bb_true2, label %bb_false
+[debug] num of operands: 3
+[debug] ---operand0: cond2
+[debug] ---operand1: bb_false
+[debug] ---operand2: bb_true2
+[debug] >>> 여기로 뛸거야 >>> bb_true2
+[debug] ** 5. loserUsers:   call void @f(i32 %a, i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true2
+[debug] successor[1]: bb_false
+[debug] ** 5. loserUsers:   call void @f(i32 %b, i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true2
+[debug] successor[1]: bb_false
+[debug] ** 5. loserUsers:   ret i32 %c
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true2
+[debug] successor[1]: bb_false
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entrybb_true,bb_true2) dominates bb_true2!!!!!!!
+
+[debug] ** 5. loserUsers:   call void @f(i32 %b, i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true2
+[debug] successor[1]: bb_false
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entrybb_true,bb_true2) dominates bb_true2!!!!!!!
+
+[debug] ** 5. loserUsers:   call void @f(i32 %b, i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true2
+[debug] successor[1]: bb_false
+[debug] ** 5. loserUsers:   %cond2 = icmp eq i32 %b, %c
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true2
+[debug] successor[1]: bb_false
+[debug] ** 5. loserUsers:   %a = call i32 @g(i32 %b, i32 %c)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true2
+[debug] successor[1]: bb_false
+[debug]        this is value(inst):   call void @f(i32 %b, i32 %b, i32 %c)
+[debug]              inst name:
+[debug]        this is value(inst):   br i1 %cond2, label %bb_true2, label %bb_false
+[debug]              inst name:
+[debug]        this is value(inst):   call void @f(i32 %a, i32 %b, i32 %c)
+[debug]              inst name:
+[debug]        this is value(inst):   ret i32 %a
+[debug]              inst name:
+[debug]        this is value(inst):   call void @f(i32 %b, i32 %b, i32 %b)
+[debug]              inst name:
+[debug]        this is value(inst):   ret i32 %b
+[debug]              inst name:
+[debug]        this is value(inst):   call void @f(i32 %b, i32 %b, i32 %c)
+[debug]              inst name:
+[debug]        this is value(inst):   ret i32 %b
+[debug]              inst name:
+== data/check9.ll ==
 [debug] basic block list size : 3
-[debug] === 이게 branch instruction terminator:   br i1 %cond, label %bb_true, label %bb_else\nScore: 70 / 110
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond, label %bb_true, label %bb_else
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: 
+[debug] === 이게 branch instruction terminator:   br i1 %cond, label %bb_true, label %bb_else
+
+[debug] === successor 갯수: 2
+이거 타입이 뭐임 bb_true
+[debug] ** BBlist에서 이름 같은 BB 찾음: bb_true
+[debug] ** BBlist에서 이름 같은 BB 찾음: bb_else
+[debug] ++++++ BFS elements ++++++ 
+[debug] +++++++ 
+[debug] +++++++ bb_true
+[debug] +++++++ bb_else
+
+[debug] ++++++ visited elements ++++++ 
+[debug] +++++++ 
+[debug] +++++++ bb_true
+[debug] +++++++ bb_else
+[debug] <<<이건 그냥 inst만 받은거>>>:   ret i32 %b
+
+이게 ret이 나와야 하는데ret
+오잉 여기 안 들어와??
+[debug]        this is value(inst):   %cond = icmp eq i32 %a, %b
+[debug]              inst name:cond
+
+[debug] ****** I found compare inst!:   %cond = icmp eq i32 %a, %b
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0: i32 %a
+[debug] Op0.getname(): a
+[debug] Op1: i32 %b
+[debug] Op1.getname(): b
+[debug]--i32 %a is argv[0]
+[debug]--i32 %b is argv[1]
+
+[debug]  ** 'i32 %b' should be replaced by 'i32 %a'
+
+
+[debug] ** 4. find condUser:   br i1 %cond, label %bb_true, label %bb_else
+[debug] num of operands: 3
+[debug] ---operand0: cond
+[debug] ---operand1: bb_else
+[debug] ---operand2: bb_true
+[debug] >>> 여기로 뛸거야 >>> bb_true
+[debug] ** 5. loserUsers:   ret i32 %b
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_else
+[debug] ** 5. loserUsers:   call void @g(i32 %a, i32 %b)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_else
+[debug] ** 5. loserUsers:   %cond = icmp eq i32 %a, %b
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: bb_true
+[debug] successor[1]: bb_else
+[debug]        this is value(inst):   br i1 %cond, label %bb_true, label %bb_else
+[debug]              inst name:
+[debug]        this is value(inst):   call void @g(i32 %a, i32 %b)
+[debug]              inst name:
+[debug]        this is value(inst):   ret i32 %b
+[debug]              inst name:
+[debug]        this is value(inst):   br label %bb_true
+[debug]              inst name:
+\nScore: 110 / 110
 ----- my checks -----
 == mycheck/check1.ll ==
 [debug] basic block list size : 5
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond1, label %true, label %exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: entry
 [debug] === 이게 branch instruction terminator:   br i1 %cond1, label %true, label %exit
 
 [debug] === successor 갯수: 2
@@ -951,6 +1732,10 @@
 [debug] +++++++ entry
 [debug] +++++++ true
 [debug] +++++++ exit
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond2, label %true1, label %exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: true
 [debug] === 이게 branch instruction terminator:   br i1 %cond2, label %true1, label %exit
 
 [debug] === successor 갯수: 2
@@ -968,6 +1753,14 @@
 [debug] +++++++ true
 [debug] +++++++ exit
 [debug] +++++++ true1
+[debug] <<<이건 그냥 inst만 받은거>>>:   ret i32 0
+
+이게 ret이 나와야 하는데ret
+오잉 여기 안 들어와??
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond3, label %true2, label %exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: true1
 [debug] === 이게 branch instruction terminator:   br i1 %cond3, label %true2, label %exit
 
 [debug] === successor 갯수: 2
@@ -1264,6 +2057,10 @@ entry dominates true1!
 [debug]              inst name:
 == mycheck/check2.ll ==
 [debug] basic block list size : 11
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond0, label %T, label %F
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: entry
 [debug] === 이게 branch instruction terminator:   br i1 %cond0, label %T, label %F
 
 [debug] === successor 갯수: 2
@@ -1279,6 +2076,10 @@ entry dominates true1!
 [debug] +++++++ entry
 [debug] +++++++ T
 [debug] +++++++ F
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond1, label %TT, label %exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: T
 [debug] === 이게 branch instruction terminator:   br i1 %cond1, label %TT, label %exit
 
 [debug] === successor 갯수: 2
@@ -1298,6 +2099,10 @@ entry dominates true1!
 [debug] +++++++ F
 [debug] +++++++ TT
 [debug] +++++++ exit
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond2, label %FT, label %exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: F
 [debug] === 이게 branch instruction terminator:   br i1 %cond2, label %FT, label %exit
 
 [debug] === successor 갯수: 2
@@ -1319,6 +2124,10 @@ entry dominates true1!
 [debug] +++++++ TT
 [debug] +++++++ exit
 [debug] +++++++ FT
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond3, label %TTT, label %exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: TT
 [debug] === 이게 branch instruction terminator:   br i1 %cond3, label %TTT, label %exit
 
 [debug] === successor 갯수: 2
@@ -1342,6 +2151,14 @@ entry dominates true1!
 [debug] +++++++ exit
 [debug] +++++++ FT
 [debug] +++++++ TTT
+[debug] <<<이건 그냥 inst만 받은거>>>:   ret i32 0
+
+이게 ret이 나와야 하는데ret
+오잉 여기 안 들어와??
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond5, label %FTT, label %FTF_FTTT
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: FT
 [debug] === 이게 branch instruction terminator:   br i1 %cond5, label %FTT, label %FTF_FTTT
 
 [debug] === successor 갯수: 2
@@ -1369,6 +2186,10 @@ entry dominates true1!
 [debug] +++++++ TTT
 [debug] +++++++ FTT
 [debug] +++++++ FTF_FTTT
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond7, label %TTTT, label %TTTF
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: TTT
 [debug] === 이게 branch instruction terminator:   br i1 %cond7, label %TTTT, label %TTTF
 
 [debug] === successor 갯수: 2
@@ -1400,6 +2221,10 @@ entry dominates true1!
 [debug] +++++++ FTF_FTTT
 [debug] +++++++ TTTT
 [debug] +++++++ TTTF
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond6, label %FTF_FTTT, label %exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: FTT
 [debug] === 이게 branch instruction terminator:   br i1 %cond6, label %FTF_FTTT, label %exit
 
 [debug] === successor 갯수: 2
@@ -1431,6 +2256,10 @@ entry dominates true1!
 [debug] +++++++ FTF_FTTT
 [debug] +++++++ TTTT
 [debug] +++++++ TTTF
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: FTF_FTTT
 [debug] === 이게 branch instruction terminator:   br label %exit
 
 [debug] === successor 갯수: 1
@@ -1461,6 +2290,10 @@ entry dominates true1!
 [debug] +++++++ FTF_FTTT
 [debug] +++++++ TTTT
 [debug] +++++++ TTTF
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: TTTT
 [debug] === 이게 branch instruction terminator:   br label %exit
 
 [debug] === successor 갯수: 1
