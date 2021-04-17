@@ -84,6 +84,10 @@ PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
     while (BFSitr != BBLsize-1){
         // BB를 종료시키는 instruction : BR inst인지 확인. 
         // successor을 받아야 하기 때문. 
+        if ((*BFS[BFSitr]).getName() == "exit") {
+            BFSitr++;
+            continue;
+        }
         BranchInst* terminator = dyn_cast<BranchInst>((*BFS[BFSitr++]).getTerminator());
         outs() << "[debug] === 이게 branch instruction terminator: " << *terminator << "\n";
         // successor 받아서 앞에꺼부터 넣는다.
