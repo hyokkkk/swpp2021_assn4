@@ -268,39 +268,14 @@ void decideWinnerLoser(Value* Op0, Value* Op1, Function& F, FunctionAnalysisMana
             for (int i = 0; i < instV.size(); i++){
                 if ((*instV[i]).getName().equals((*Op0).getName())){
                     op0instV= i;
-                    instOp0 = dyn_cast<Instruction>(instV[i]);
-                    op0BB = instOp0->getParent();
                 }else if((*instV[i]).getName().equals((*Op1).getName())){
                     op1instV= i;
-                    instOp1 = dyn_cast<Instruction>(instV[i]);
-                    op1BB = instOp1->getParent();
                 }
             }
             outs() << "[debug]--" << *Op0 << " is inst[" << op0instV<< "]\n";
             outs() << "[debug]--" << *Op1 << " is inst[" << op1instV<< "]\n\n";
-
-            // i) Op0, Op1 are in the same BB.
-            if (op0BB->getName() == op1BB->getName()){
-            outs() << "[debug]they are in the same BB \n";
                 loser = op0instV > op1instV ? Op0 : Op1;
                 winner = op0instV > op1instV ? Op1 : Op0;
-            // ii) Op0, Op1 are in different BBs.
-            } else {
-                // opNdom : [param index]BB dominates the other BB.
-            outs() << "[debug] **** checkInstdominance\n";
-                int opNdom = checkInstDominance(*op0BB, *op1BB, F, FAM);
-                if (!opNdom){
-                    // op0 dominates op1
-                    winner = Op0;
-                    loser = Op1;
-                
-                }else if (opNdom == 1){
-                    // op1 dominates op0
-                    winner = Op1;
-                    loser = Op0;
-                   
-                }
-            }
 outs() << "[debug]  ** \'"<< *loser << "\' should be replaced by \'"<<*winner<< "\'\n\n";;
         // (2) arg vs. arg : first defined, become winner. @f(i32 %y, i32 %x) -> %y wins.
         }else if (op0argV != -1 && op1argV != -1){
