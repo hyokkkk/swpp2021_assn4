@@ -84,30 +84,19 @@ void sortBBbyBFSorder(Function& F){
     BasicBlock* entryBBp = &entryBB;
     BFS.push_back(entryBBp);
 
-    outs() << "[debug] basic block list size : " << fp->getBasicBlockList().size() << "\n";
-
     // BFS의 사이즈와 basicblocklist의 사이즈가 같아질 때까지 loop돈다.
     int BFSitr= 0;
     int BBLsize = fp->getBasicBlockList().size();
     while (BFSitr != BBLsize-1){
-
         Instruction* isRet = (*BFS[BFSitr]).getTerminator();
-        outs() << "[debug] <<<이건 그냥 inst만 받은거>>>: " << *isRet << "\n\n";
-        outs() << "이게 ret이 나와야 하는데"<< isRet->getOpcodeName() << "\n";
 
         // terminator inst가 `ret`이라면 successor를 받을 수 없기 때문에
         // 오류가 생기지 않도록 미리 cut해야 함.
         if ((StringRef)(isRet->getOpcodeName())==(StringRef)("ret")) {
-            outs() << "오잉 여기 안 들어와??" << "\n";
             BFSitr++;
             continue;
         }
-        outs() << "이게 마지막 BB의 이름이라는 것: " << isRet->getParent()->getName() << "\n";
-
         BranchInst* terminator = dyn_cast<BranchInst>((*BFS[BFSitr++]).getTerminator());
-        outs() << "[debug] === 이게 branch instruction terminator: " << *terminator << "\n\n";
-        outs() << "[debug] === successor 갯수: " << (*terminator).getNumSuccessors() << "\n";
-        outs() << "이거 타입이 뭐임 " << (*terminator->getSuccessor(0)).getName() << "\n";
 
         // successor(0), (1) 순서로 방문할 예정. BFS에 넣는다.
         // successor name은 BB name형태이므로 BBlist에서 해당 BB 주소를 찾는다.
@@ -116,20 +105,16 @@ void sortBBbyBFSorder(Function& F){
         for (int i = 0; i < (*terminator).getNumSuccessors(); i++){
             succName = (*terminator->getSuccessor(i)).getName();
             BBp = findBasicBlockPointer(F, succName);
-            outs() << "[debug] ** BBlist에서 이름 같은 BB 찾음: " << BBp->getName() << "\n";
+
             // 이미 방문된 적 있으면 다시 방문할 필요 없음.
             if (!visited(succName)){
                 BFS.push_back(BBp);
             }
         }
-        outs() << "[debug] ++++++ BFS elements ++++++ \n";
-        for (auto &B : BFS){
-            outs() << "[debug] +++++++ " << (*B).getName() << "\n";
-        }
     }
 }
-
 //============================================================================
+
 BasicBlock* findBasicBlockPointer(Function& F, StringRef BBname){
     Function* fp = &F;
     for (auto iter = fp->getBasicBlockList().begin();
@@ -141,6 +126,7 @@ BasicBlock* findBasicBlockPointer(Function& F, StringRef BBname){
     return NULL;
 }
 //============================================================================
+
 bool visited(StringRef succName){
     bool v = false;
     for (BasicBlock* bp : BFS){
@@ -162,15 +148,13 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V ) {
     Instruction &I = *inst;
     Value* Op0, *Op1;                   // Op0 : %a, Op1 : %b
     ICmpInst::Predicate Pred;
-    outs() <<"[debug]        this is value(inst): "<< *V << "\n";
-    outs() << "[debug]              inst name:"<< (*inst).getName() << "\n";
+
     // if not matched with '%cond = icmp eq (v1, v2)', return.
     if (!(match(&I, m_ICmp(Pred, m_Value(Op0), m_Value(Op1))) && Pred == ICmpInst::ICMP_EQ)) {
          return ;
     }
     /****** codes below are only executed when matched with `%cond = icmp eq (v1, v2)` ********/
- outs() << "\n[debug] ****** I found compare inst!: " << I << "\n";
- outs() << "\n[debug] ****** icmp일 때에만 이 문장 나와야 함" << "\n";
+
     // 3. check Op0, Op1 are whether 'arg' or 'inst', and decide who's the "winner" and "loser"
     decideWinnerLoser(I.getOperand(0), I.getOperand(1), F, FAM);
 
@@ -192,12 +176,6 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V ) {
         if (!(match(brInst, m_Br(m_Value(C), m_BasicBlock(TrueBB), m_BasicBlock(FalseBB))))){
             return ;
         }
-        outs() << "\n[debug] ** 4. find condUser: "<< *brInst<< "\n";
-        outs() << "[debug] num of operands: "<< brInst -> getNumOperands()<< "\n";
-        outs() << "[debug] ---operand0: "<< brInst -> getOperand(0)->getName() << "\n";
-        outs() << "[debug] ---operand1: "<< brInst -> getOperand(1)->getName() << "\n";
-        outs() << "[debug] ---operand2: "<< brInst -> getOperand(2)->getName() << "\n";
-        outs() << "[debug] >>> 여기로 뛸거야 >>> " << brInst->getOperand(2)->getName()<< "\n";
 
         // 5. find "loserUsers"
         for (auto loserItr = loser->use_begin(), loserEnd = loser->use_end();
@@ -206,7 +184,7 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V ) {
             User* loserUser = loserUse.getUser();
             Instruction* targetInst = dyn_cast<Instruction>(loserUser);
             assert(targetInst);
-            outs() << "[debug] ** 5. loserUsers: "<<*targetInst<<"\n";
+
             // 6. replace "loser"s which are in "targetBB"s with "winner" only when
             //    "targetBB" is dominated by BBEdge(entryBB, trueBB).
             //    it works same as "dummy block"
@@ -221,11 +199,7 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V ) {
 
 //============================================================================
 void decideWinnerLoser(Value* Op0, Value* Op1, Function& F, FunctionAnalysisManager& FAM){
-    outs() << " [debug]** 3. decideWinnerLoser\n";
-        outs() << "[debug] Op0: " << *Op0 << "\n";
-        outs() << "[debug] Op0.getname(): " << (*Op0).getName() << "\n";
-        outs() << "[debug] Op1: " << *Op1 << "\n";
-        outs() << "[debug] Op1.getname(): " << (*Op1).getName() << "\n";
+
         // -1 : instruction (not in the argV)
         // 0, 1, 2... : index in argV
         int op0argV = -1;
@@ -238,8 +212,6 @@ void decideWinnerLoser(Value* Op0, Value* Op1, Function& F, FunctionAnalysisMana
                 op1argV = i;
             }
         }
-        outs() << "[debug]--" << *Op0 << " is argv[" << op0argV << "]\n";
-        outs() << "[debug]--" << *Op1 << " is argv[" << op1argV << "]\n\n";
         // (1) inst vs. inst : first executed, become winner.
         //     - compare instV index. (first come, first executed.)
         if (op0argV == -1 && op1argV == -1){
@@ -255,23 +227,17 @@ void decideWinnerLoser(Value* Op0, Value* Op1, Function& F, FunctionAnalysisMana
                     op1instV= i;
                 }
             }
-            outs() << "[debug]--" << *Op0 << " is inst[" << op0instV<< "]\n";
-            outs() << "[debug]--" << *Op1 << " is inst[" << op1instV<< "]\n\n";
                 loser = op0instV > op1instV ? Op0 : Op1;
                 winner = op0instV > op1instV ? Op1 : Op0;
-outs() << "[debug]  ** \'"<< *loser << "\' should be replaced by \'"<<*winner<< "\'\n\n";;
+
         // (2) arg vs. arg : first defined, become winner. @f(i32 %y, i32 %x) -> %y wins.
         }else if (op0argV != -1 && op1argV != -1){
             loser = op0argV > op1argV ? Op0 : Op1;
             winner = op0argV > op1argV ? Op1 : Op0;
-outs() << "[debug]  ** \'"<< *loser << "\' should be replaced by \'"<<*winner<< "\'\n\n";;
-            return;
         // (3) arg vs. inst : arg always wins.
         }else {
             loser = op0argV == -1 ? Op0 : Op1;
             winner = op0argV == -1 ? Op1 : Op0;
-outs() << "[debug]  ** \'"<< *loser << "\' should be replaced by \'"<<*winner<< "\'\n\n";;
-            return;
         }
 }
 
@@ -281,32 +247,21 @@ bool checkBBEDominance(BasicBlock& startBB, BasicBlock& targetBB,
 {
     DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
     BranchInst *TI = dyn_cast<BranchInst>(startBB.getTerminator());
-    outs() << "\n[debug] ** 6. checkBBEdominance\n";
 
     // br i1 %cond, label %successor(0), label %successor(1)
     BasicBlock* destBB = TI->getSuccessor(0);
-    outs() << "\n[debug] 일단 실험해보자 : successor 갯수: " <<  TI->getNumSuccessors() << "\n";
-    outs() << "[debug] successor[0]: " <<  TI->getSuccessor(0)->getName() << "\n";
-    outs() << "[debug] successor[1]: " <<  TI->getSuccessor(1)->getName() << "\n";
     BasicBlockEdge BBE(&startBB, destBB);
 
-    if (DT.dominates(BBE, &targetBB)){
-        outs() << "[debug] 이 문장 나오면 바뀌는거다.\n";
-         outs() << "***** Edge (entry" << startBB.getName() <<","<< destBB->getName()
-        << ") dominates " << targetBB.getName() << "!!!!!!!\n\n";
-        return true; }
+    if (DT.dominates(BBE, &targetBB)){ return true; }
     return false;
 }
 //============================================================================
 int checkInstDominance(BasicBlock& B0, BasicBlock& B1, Function& F, FunctionAnalysisManager& FAM){
     DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
     if (DT.dominates(&B0, &B1)){
-        // todo : delete
-        outs() << B0.getName() << " dominates " << B1.getName() << "!\n";
         // [param index] BB dominates the other BB.
         return 0;
     }else if (DT.dominates(&B1, &B0)){
-        outs() << B1.getName() << " dominates " << B0.getName() << "!\n";
         return 1;
     }
     // no dominant relation
