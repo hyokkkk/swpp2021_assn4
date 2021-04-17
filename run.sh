@@ -62,7 +62,7 @@ if [[ "$1" == "test" || "$1" == "all" ]]; then
     TOTAL=$((TOTAL+10))
   done
 
-  echo "Score: $SCORE / $TOTAL"
+  echo "\nScore: $SCORE / $TOTAL"
 
   echo "----- my checks -----"
   PASSED=0

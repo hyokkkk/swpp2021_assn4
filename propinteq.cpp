@@ -20,11 +20,11 @@ using namespace llvm::PatternMatch;
 //          kia->samsung 수행 inst보다 먼저 수행되면 오류가 난다.
 //      => 따라서, getSuccessor()를 이용, BFS를 돌아 하위level node가 
 //         상위 level node보다 먼저 수행되는 것을 방지한다.
-// 1. <keep args, insts> 
+// 1. <push args into vector, BB into vector by BFS order> 
 //    - function arguments를 vector "argV"에 담아놓는다. 
-//    - 모든 ir code는 entryBB부터 시작하는 것을 이용, getSuccessor()의 값들을 BFS에
-//    저장해 놓는다. BFS 돌면서 만나게 되는 instruction들을 vector "instV"에 push.
-//    3번에서 dominance relationship between two instruction을 판단할 때 필요함.
+//    - 모든 ir code는 entryBB부터 시작하므로 getSuccessor()를 이용해 BB 방문 순서를
+//    BFS 순서로 저장해 놓는다. BFS 돌면서 만나게 되는 instruction들을 vector "instV"에
+//    push. 3번에서 dominance relationship between two instruction을 판단할 때 필요함.
 // 2. <find icmp instruction>
 //    BB내의 inst 하나씩 돌면서 matcher를 통해 `%cond = icmp i32 %a, %b`를 찾는다.
 //    icmp inst가 아니라면 바로 return해서 다음 inst를 살핀다.
@@ -61,11 +61,25 @@ class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> 
 public:
 PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
 
-    // 1. <keep args, insts>: push arguments, instructions into vectors
+    // 1. <push args into vector>
     for (Argument &Arg : F.args()){ 
         Value* arg = &Arg;
         argV.push_back(arg);
     }
+    // 1. <BB into BFS vector by BFS order>
+    sortBBbyBFSorder(F);
+//    for (auto BBp : BFS){
+//        for (auto &I : *BBp){
+//            replaceEquality(F, FAM, &I);
+//        }
+//    }
+
+
+
+    return PreservedAnalyses::all();
+}
+//============================================================================
+void sortBBbyBFSorder(Function& F){
     // BFSqueue는 control flow에 위배되지 않는 순서대로 BB를 정렬함.
     // 탐색 순서만 나타내는 용도.
     Function* fp = &F;
@@ -81,15 +95,24 @@ PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
 
     int BFSitr= 0;        // BFS iter
     int BBLsize = fp->getBasicBlockList().size();
+    // 종료시키는 BB의 이름이어야 함. instruction name 이 ret인 경우. 
     while (BFSitr != BBLsize-1){
         // BB를 종료시키는 instruction : BR inst인지 확인. 
         // successor을 받아야 하기 때문. 
-        if ((*BFS[BFSitr]).getName() == "exit") {
+
+        Instruction* isRet = (*BFS[BFSitr]).getTerminator();
+        outs() << "[debug] <<<이건 그냥 inst만 받은거>>>: " << *isRet << "\n\n";
+        outs() << "이게 ret이 나와야 하는데"<< isRet->getOpcodeName() << "\n";
+        // 마지막 BB라는 의미. 
+        if ((StringRef)(isRet->getOpcodeName())==(StringRef)("ret")) {
+            outs() << "오잉 여기 안 들어와??" << "\n";
             BFSitr++;
             continue;
         }
+        outs() << "이게 마지막 BB의 이름이라는 것: " << isRet->getParent()->getName() << "\n";
+
         BranchInst* terminator = dyn_cast<BranchInst>((*BFS[BFSitr++]).getTerminator());
-        outs() << "[debug] === 이게 branch instruction terminator: " << *terminator << "\n";
+        outs() << "[debug] === 이게 branch instruction terminator: " << *terminator << "\n\n";
         // successor 받아서 앞에꺼부터 넣는다.
         // 이렇게 하면 Label의 내용이 나옴. 
         outs() << "[debug] === successor 갯수: " << (*terminator).getNumSuccessors() << "\n";
@@ -119,8 +142,7 @@ PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
         }
     }
 
-    return PreservedAnalyses::all();
-}
+} 
 
 //============================================================================
 BasicBlock* findBasicBlockPointer(Function& F, StringRef BBname){
@@ -146,11 +168,12 @@ bool visited(StringRef succName){
 
 //============================================================================
 // The reason why "F" and "FAM" are in param is to use 'checkDominance()' function.
-void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V, bool isArg) {
+void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V ) {
 
     // 2. check the instruction is `%cond = icmp i32 %a, %b` or not.
     Instruction* inst = dyn_cast<Instruction>(V);
     assert(inst);
+    instV.push_back(inst);
     Instruction &I = *inst;
     Value* Op0, *Op1;                   // Op0 : %a, Op1 : %b
     ICmpInst::Predicate Pred;
