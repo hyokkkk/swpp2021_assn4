@@ -4,6 +4,7 @@
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/raw_ostream.h"
 #include <vector>
+#include <queue>
 #include <string>
 
 using namespace llvm;
@@ -12,9 +13,20 @@ using namespace llvm::PatternMatch;
 
 // < Algorithms >
 // --- 아래의 숫자와 코드 설명에 쓰여진 숫자는 같은 내용을 설명한다.
-// 1. function을 한 번 돌면서 모든 arg, instruction을 각각 vector에 넣어놓는다
-//    3.번 단계를 할 때 필요함. 
-// 2. instruction을 하나씩 돌면서 `%cond = icmp i32 %a, %b`인 것을 찾는다 by matcher.
+// 0. 기존의 접근은 llvm ir code에 작성된 순서대로 instruction을 살핀다.
+//      하지만 이는 실제 function의 control flow가 아니라 단순히 ir code 작성순서에
+//      의존하여 replace하는 순서를 판단 하기 때문에 오류가 생길 수 있다.
+//      ex) kia -> samsung -> zonber 로 바뀌어야 하는데 samsung->zonber inst가 
+//          kia->samsung 수행 inst보다 먼저 수행되면 오류가 난다.
+//      => 따라서, getSuccessor()를 이용, BFS를 돌아 하위level node가 
+//         상위 level node보다 먼저 수행되는 것을 방지한다.
+// 1. <keep args, insts> 
+//    - function arguments를 vector "argV"에 담아놓는다. 
+//    - 모든 ir code는 entryBB부터 시작하는 것을 이용, getSuccessor()의 값들을 BFS에
+//    저장해 놓는다. BFS 돌면서 만나게 되는 instruction들을 vector "instV"에 push.
+//    3번에서 dominance relationship between two instruction을 판단할 때 필요함.
+// 2. <find icmp instruction>
+//    BB내의 inst 하나씩 돌면서 matcher를 통해 `%cond = icmp i32 %a, %b`를 찾는다.
 //    icmp inst가 아니라면 바로 return해서 다음 inst를 살핀다.
 // 3. <decide Winner and loser>
 //    icmp의 operand("Op0", "Op1") 각각이 arg인지 inst인지 판단.
@@ -22,10 +34,10 @@ using namespace llvm::PatternMatch;
 //            -> inst: argV에 없으면 inst. 
 //    ** 그 후에 replace 당할 register name("loser")과 replace를 하게 될 "winner"를 찾는다.
 //            -> 1) inst vs. inst / 2) arg vs. arg / 3) arg vs. inst 인 경우가 있다.
-//            -> 1)가 좀 까다로운데 `decideWinnerLoser()`에 기술해놓음.
+//            -> BFS 순으로 inst가 "instV"에 저장되기 때문에 index로 dominance 판단 가능.
 // 4. <find condUser>
-//    `br i1 %cond, label %true, label %false`, 즉, %cond를 사용하는 "condUser" 찾아야 함.
-//    condUser가 br instruction인 경우, 해당 BB를 BBEdge의 startBB로 만들어야 하므로.
+//    condUser가 br instruction인 경우, 현재 BB를 BBEdge의 startBB로 만들어야 하므로
+//    `br i1 %cond, label %true, label %false`, 즉, %cond를 사용하는 "condUser" 찾음.
 // 5. <find loserUser>
 //    3에서 구한 "loser"를 instruction에 사용하고 있는 user("loserUser")를 찾는다.
 // 6. <replace>
@@ -40,6 +52,7 @@ static vector<Value*> argV;             // vectors for function arguments.
 static vector<Value*> instV;            // vectors for instructions in function.
 static Value* loser;                    // a syntax which will be replaced by "winner".
 static Value* winner;                   // a syntax which will replace "loser".
+static queue<BasicBlock*> BFSqueue;     // queue for BasicBlock BFS
 
 namespace {
 class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> {
@@ -47,30 +60,14 @@ class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> 
 public:
 PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
 
-    // 1. push arguments, instructions into vectors
+    // 1. <keep args, insts>: push arguments, instructions into vectors
     for (Argument &Arg : F.args()){ 
-        completeVector(&Arg, true);
+        Value* arg = &Arg;
+        argV.push_back(arg);
     }
-    for (auto &BB : F){
-        for (auto &I : BB){
-            completeVector(&I, false);
-        }
-    }
-    for (auto &BB : F){
-        outs() << "[debug]================ <BB label>: " << BB.getName() << "\n";
-        for (auto &I : BB){
-            outs() << "[debug]=====<Instruction run 시작>: " << I << "\n";
-            replaceEquality(F, FAM, &I, false);
-        }
-    }
+    outs() << "[debug] <Entry Block Name>:======== " << F.getEntryBlock().getName() << "\n\n";
+
     return PreservedAnalyses::all();
-}
-void completeVector(Value* V, bool isArg){
-    if (isArg){
-        argV.push_back(V);
-        return ;
-    }
-    instV.push_back(V);
 }
 
 //============================================================================
