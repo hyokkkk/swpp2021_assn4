@@ -52,7 +52,8 @@ static vector<Value*> argV;             // vectors for function arguments.
 static vector<Value*> instV;            // vectors for instructions in function.
 static Value* loser;                    // a syntax which will be replaced by "winner".
 static Value* winner;                   // a syntax which will replace "loser".
-static queue<BasicBlock*> BFSqueue;     // queue for BasicBlock BFS
+static vector<BasicBlock*> BFS;     // queue for BasicBlock BFS
+static vector<StringRef> visitedV;
 
 namespace {
 class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> {
@@ -65,9 +66,78 @@ PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
         Value* arg = &Arg;
         argV.push_back(arg);
     }
-    outs() << "[debug] <Entry Block Name>:======== " << F.getEntryBlock().getName() << "\n\n";
+    // BFSqueue는 control flow에 위배되지 않는 순서대로 BB를 정렬함.
+    // 탐색 순서만 나타내는 용도.
+    Function* fp = &F;
+    // 일단 방문한 애를 vector에 넣는 게 낫지. vector에 넣기 전에 visited 살펴서
+    // 이미 존재하면 안 넣고 다음으로 넘어가면 되니까. 
+    BasicBlock& entryBB = F.getEntryBlock();
+    BasicBlock* entryBBp = &entryBB;
+    visitedV.push_back(entryBB.getName());
+    BFS.push_back(entryBBp);
+
+    // BFS의 사이즈와 basicblocklist의 사이즈가 같아질 때까지 loop돈다.
+    outs() << "[debug] basic block list size : " << fp->getBasicBlockList().size() << "\n";
+
+    int BFSitr= 0;        // BFS iter
+    int BBLsize = fp->getBasicBlockList().size();
+    while (BFSitr != BBLsize-1){
+        // BB를 종료시키는 instruction : BR inst인지 확인. 
+        // successor을 받아야 하기 때문. 
+        BranchInst* terminator = dyn_cast<BranchInst>((*BFS[BFSitr++]).getTerminator());
+        outs() << "[debug] === 이게 branch instruction terminator: " << *terminator << "\n";
+        // successor 받아서 앞에꺼부터 넣는다.
+        // 이렇게 하면 Label의 내용이 나옴. 
+        outs() << "[debug] === successor 갯수: " << (*terminator).getNumSuccessors() << "\n";
+        outs() << "이거 타입이 뭐임 " << (*terminator->getSuccessor(0)).getName() << "\n";
+        
+        // 아.. label... 이면... 또 name으로 BB를 찾아가야하는 것인가. 
+        BasicBlock* BBp;
+        for (int i = 0; i < (*terminator).getNumSuccessors(); i++){
+            // 이름으로 찾아야 함. 
+            StringRef succName = (*terminator->getSuccessor(i)).getName();
+            BBp = findBasicBlockPointer(F, succName);
+            outs() << "[debug] ** BBlist에서 이름 같은 BB 찾음: " << BBp->getName() << "\n";
+            // 이미 방문된 적 있으면 다시 방문할 필요 없음.
+            if (!visited(succName)){
+                BFS.push_back(BBp);
+                visitedV.push_back(succName);
+            }
+        }
+
+        outs() << "[debug] ++++++ BFS elements ++++++ \n";
+        for (auto &B : BFS){
+            outs() << "[debug] +++++++ " << (*B).getName() << "\n";
+        }
+        outs() << "\n[debug] ++++++ visited elements ++++++ \n";
+        for (auto &B : visitedV){
+            outs() << "[debug] +++++++ " << B<< "\n";
+        }
+    }
 
     return PreservedAnalyses::all();
+}
+
+//============================================================================
+BasicBlock* findBasicBlockPointer(Function& F, StringRef BBname){
+    Function* fp = &F;
+    for (auto iter = fp->getBasicBlockList().begin();
+        iter != fp->getBasicBlockList().end(); iter++){
+        if ((*iter).getName() == BBname){
+            return &(*iter);
+        }
+    }
+    return NULL;
+}
+//============================================================================
+bool visited(StringRef succName){
+    bool v = false;
+    for (StringRef& n : visitedV){
+        if (n == succName){
+            v = true;
+        }
+    }
+    return v;
 }
 
 //============================================================================
