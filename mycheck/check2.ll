@@ -27,7 +27,7 @@ define i32 @f(i32 %zonber, i32 %buy, i32 %hold, i32 %sell, i32 %samsung, i32 %to
 ; CHECK-NEXT:     br i1 [[COND7]], label [[TTTT:%.*]], label [[TTTF:%.*]]
 ; CHECK:        F:
 ; CHECK-NEXT:     [[HANMI:%.*]] = sub i32 [[SAMSUNG]], [[APPLE]]
-; CHECK-NEXT:     [[NOKSIPJA:%.*]] = mul i32 [[SELL:%.*]], [[ZONBER]]
+; CHECK-NEXT:     [[NOKSIPJA:%.*]] = mul i32 [[SELL]], [[ZONBER]]
 ; CHECK-NEXT:     [[COND2:%.*]] = icmp eq i32 [[NOKSIPJA]], [[HANMI]]
 ; CHECK-NEXT:     br i1 [[COND2]], label [[FT:%.*]], label [[EXIT]]
 ; CHECK:        FTF_FTTT:
@@ -111,12 +111,4 @@ TTTT:
   call i32 @f(i32 %KAL, i32 %apple, i32 %samsung, i32 %kia, i32 %kakao, i32 %shinsegye)
                 ; zon       zon         zon           zon
   br label %exit
-
-
-
-
-
-
-
-
 }
