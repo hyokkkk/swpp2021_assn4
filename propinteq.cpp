@@ -16,12 +16,12 @@ using namespace llvm::PatternMatch;
 // 0. 기존의 접근은 llvm ir code에 작성된 순서대로 instruction을 살핀다.
 //      하지만 이는 실제 function의 control flow가 아니라 단순히 ir code 작성순서에
 //      의존하여 replace하는 순서를 판단 하기 때문에 오류가 생길 수 있다.
-//      ex) kia -> samsung -> zonber 로 바뀌어야 하는데 samsung->zonber inst가 
+//      ex) kia -> samsung -> zonber 로 바뀌어야 하는데 samsung->zonber inst가
 //          kia->samsung 수행 inst보다 먼저 수행되면 오류가 난다.
-//      => 따라서, getSuccessor()를 이용, BFS를 돌아 하위level node가 
+//      => 따라서, getSuccessor()를 이용, BFS를 돌아 하위level node가
 //         상위 level node보다 먼저 수행되는 것을 방지한다.
-// 1. <push args into vector, BB into vector by BFS order> 
-//    - function arguments를 vector "argV"에 담아놓는다. 
+// 1. <push args into vector, BB into vector by BFS order>
+//    - function arguments를 vector "argV"에 담아놓는다.
 //    - 모든 ir code는 entryBB부터 시작하므로 getSuccessor()를 이용해 BB 방문 순서를
 //    BFS 순서로 저장해 놓는다. BFS 돌면서 만나게 되는 instruction들을 vector "instV"에
 //    push. 3번에서 dominance relationship between two instruction을 판단할 때 필요함.
@@ -31,7 +31,7 @@ using namespace llvm::PatternMatch;
 // 3. <decide Winner and loser>
 //    icmp의 operand("Op0", "Op1") 각각이 arg인지 inst인지 판단.
 //    ** how? -> arg: argV에 있는지 확인.
-//            -> inst: argV에 없으면 inst. 
+//            -> inst: argV에 없으면 inst.
 //    ** 그 후에 replace 당할 register name("loser")과 replace를 하게 될 "winner"를 찾는다.
 //            -> 1) inst vs. inst / 2) arg vs. arg / 3) arg vs. inst 인 경우가 있다.
 //            -> BFS 순으로 inst가 "instV"에 저장되기 때문에 index로 dominance 판단 가능.
@@ -61,7 +61,7 @@ public:
 PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
 
     // 1. <push args into vector>
-    for (Argument &Arg : F.args()){ 
+    for (Argument &Arg : F.args()){
         Value* arg = &Arg;
         argV.push_back(arg);
     }
@@ -79,15 +79,15 @@ PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
 // 1. <BB into BFS vector by BFS order>
 void sortBBbyBFSorder(Function& F){
     // BFS는 control flow에 위배되지 않는 순서대로 BB를 정렬함. 이 순서대로 instruction을 탐색함.
-    Function* fp = &F;                              
-    BasicBlock& entryBB = F.getEntryBlock();         
+    Function* fp = &F;
+    BasicBlock& entryBB = F.getEntryBlock();
     BasicBlock* entryBBp = &entryBB;
-    BFS.push_back(entryBBp); 
+    BFS.push_back(entryBBp);
 
     outs() << "[debug] basic block list size : " << fp->getBasicBlockList().size() << "\n";
 
     // BFS의 사이즈와 basicblocklist의 사이즈가 같아질 때까지 loop돈다.
-    int BFSitr= 0;        
+    int BFSitr= 0;
     int BBLsize = fp->getBasicBlockList().size();
     while (BFSitr != BBLsize-1){
 
@@ -95,7 +95,7 @@ void sortBBbyBFSorder(Function& F){
         outs() << "[debug] <<<이건 그냥 inst만 받은거>>>: " << *isRet << "\n\n";
         outs() << "이게 ret이 나와야 하는데"<< isRet->getOpcodeName() << "\n";
 
-        // terminator inst가 `ret`이라면 successor를 받을 수 없기 때문에 
+        // terminator inst가 `ret`이라면 successor를 받을 수 없기 때문에
         // 오류가 생기지 않도록 미리 cut해야 함.
         if ((StringRef)(isRet->getOpcodeName())==(StringRef)("ret")) {
             outs() << "오잉 여기 안 들어와??" << "\n";
@@ -108,8 +108,8 @@ void sortBBbyBFSorder(Function& F){
         outs() << "[debug] === 이게 branch instruction terminator: " << *terminator << "\n\n";
         outs() << "[debug] === successor 갯수: " << (*terminator).getNumSuccessors() << "\n";
         outs() << "이거 타입이 뭐임 " << (*terminator->getSuccessor(0)).getName() << "\n";
-        
-        // successor(0), (1) 순서로 방문할 예정. BFS에 넣는다. 
+
+        // successor(0), (1) 순서로 방문할 예정. BFS에 넣는다.
         // successor name은 BB name형태이므로 BBlist에서 해당 BB 주소를 찾는다.
         BasicBlock* BBp;
         StringRef succName;
@@ -127,7 +127,7 @@ void sortBBbyBFSorder(Function& F){
             outs() << "[debug] +++++++ " << (*B).getName() << "\n";
         }
     }
-} 
+}
 
 //============================================================================
 BasicBlock* findBasicBlockPointer(Function& F, StringRef BBname){
@@ -176,7 +176,7 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V ) {
 
     // 4. find "condUser" which uses %cond in its insturction.
     //     ex) `br i1 %cond, label %true, label %false`
-    //     Use a loop to find "condUser" for preventing erorrs, 
+    //     Use a loop to find "condUser" for preventing erorrs,
     //     althoguh it is guaranteed that there exists only one "condUser" in our assn.
     for (auto itr = V->use_begin(), end = V->use_end(); itr != end;) {
         Use &U = *itr++;
@@ -247,7 +247,7 @@ void decideWinnerLoser(Value* Op0, Value* Op1, Function& F, FunctionAnalysisMana
             BasicBlock *op0BB, *op1BB;
             int op0instV = -1, op1instV = -1;
 
-            // find BBs where each instruction is. 
+            // find BBs where each instruction is.
             for (int i = 0; i < instV.size(); i++){
                 if ((*instV[i]).getName().equals((*Op0).getName())){
                     op0instV= i;
@@ -290,7 +290,7 @@ bool checkBBEDominance(BasicBlock& startBB, BasicBlock& targetBB,
     outs() << "[debug] successor[1]: " <<  TI->getSuccessor(1)->getName() << "\n";
     BasicBlockEdge BBE(&startBB, destBB);
 
-    if (DT.dominates(BBE, &targetBB)){ 
+    if (DT.dominates(BBE, &targetBB)){
         outs() << "[debug] 이 문장 나오면 바뀌는거다.\n";
          outs() << "***** Edge (entry" << startBB.getName() <<","<< destBB->getName()
         << ") dominates " << targetBB.getName() << "!!!!!!!\n\n";

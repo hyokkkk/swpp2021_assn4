@@ -1,3 +1,358 @@
+----- build -----
+----- run input.ll -----
+[debug] basic block list size : 5
+[debug] <<<이건 그냥 inst만 받은거>>>:   br label %true
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: 
+[debug] === 이게 branch instruction terminator:   br label %true
+
+[debug] === successor 갯수: 1
+이거 타입이 뭐임 true
+[debug] ** BBlist에서 이름 같은 BB 찾음: true
+[debug] ++++++ BFS elements ++++++ 
+[debug] +++++++ 
+[debug] +++++++ true
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond1, label %true1, label %exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: true
+[debug] === 이게 branch instruction terminator:   br i1 %cond1, label %true1, label %exit
+
+[debug] === successor 갯수: 2
+이거 타입이 뭐임 true1
+[debug] ** BBlist에서 이름 같은 BB 찾음: true1
+[debug] ** BBlist에서 이름 같은 BB 찾음: exit
+[debug] ++++++ BFS elements ++++++ 
+[debug] +++++++ 
+[debug] +++++++ true
+[debug] +++++++ true1
+[debug] +++++++ exit
+[debug] <<<이건 그냥 inst만 받은거>>>:   br i1 %cond2, label %true2, label %exit
+
+이게 ret이 나와야 하는데br
+이게 마지막 BB의 이름이라는 것: true1
+[debug] === 이게 branch instruction terminator:   br i1 %cond2, label %true2, label %exit
+
+[debug] === successor 갯수: 2
+이거 타입이 뭐임 true2
+[debug] ** BBlist에서 이름 같은 BB 찾음: true2
+[debug] ** BBlist에서 이름 같은 BB 찾음: exit
+[debug] ++++++ BFS elements ++++++ 
+[debug] +++++++ 
+[debug] +++++++ true
+[debug] +++++++ true1
+[debug] +++++++ exit
+[debug] +++++++ true2
+[debug] <<<이건 그냥 inst만 받은거>>>:   ret i32 0
+
+이게 ret이 나와야 하는데ret
+오잉 여기 안 들어와??
+[debug]        this is value(inst):   %cond = icmp eq i32 %king, %queen
+[debug]              inst name:cond
+
+[debug] ****** I found compare inst!:   %cond = icmp eq i32 %king, %queen
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0: i32 %king
+[debug] Op0.getname(): king
+[debug] Op1: i32 %queen
+[debug] Op1.getname(): queen
+[debug]--i32 %king is argv[1]
+[debug]--i32 %queen is argv[2]
+
+[debug]  ** 'i32 %queen' should be replaced by 'i32 %king'
+
+[debug]        this is value(inst):   br label %true
+[debug]              inst name:
+[debug]        this is value(inst):   %a = add i32 %king, %queen
+[debug]              inst name:a
+[debug]        this is value(inst):   %b = add i32 %joker, %king
+[debug]              inst name:b
+[debug]        this is value(inst):   %cond1 = icmp eq i32 %b, %a
+[debug]              inst name:cond1
+
+[debug] ****** I found compare inst!:   %cond1 = icmp eq i32 %b, %a
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0:   %b = add i32 %joker, %king
+[debug] Op0.getname(): b
+[debug] Op1:   %a = add i32 %king, %queen
+[debug] Op1.getname(): a
+[debug]--  %b = add i32 %joker, %king is argv[-1]
+[debug]--  %a = add i32 %king, %queen is argv[-1]
+
+[debug]--  %b = add i32 %joker, %king is inst[3]
+[debug]--  %a = add i32 %king, %queen is inst[2]
+
+[debug]  ** '  %b = add i32 %joker, %king' should be replaced by '  %a = add i32 %king, %queen'
+
+
+[debug] ** 4. find condUser:   br i1 %cond1, label %true1, label %exit
+[debug] num of operands: 3
+[debug] ---operand0: cond1
+[debug] ---operand1: exit
+[debug] ---operand2: true1
+[debug] >>> 여기로 뛸거야 >>> true1
+[debug] ** 5. loserUsers:   %1 = call i32 @f(i32 %joker, i32 %a, i32 %b)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true1
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %g = add i32 %b, %c
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true1
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entrytrue,true1) dominates true2!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond2 = icmp eq i32 %b, %c
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true1
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entrytrue,true1) dominates true1!!!!!!!
+
+[debug] ** 5. loserUsers:   %d = add i32 %c, %b
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true1
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entrytrue,true1) dominates true1!!!!!!!
+
+[debug] ** 5. loserUsers:   %c = add i32 %a, %b
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true1
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entrytrue,true1) dominates true1!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond1 = icmp eq i32 %b, %a
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true1
+[debug] successor[1]: exit
+[debug]        this is value(inst):   br i1 %cond1, label %true1, label %exit
+[debug]              inst name:
+[debug]        this is value(inst):   %c = add i32 %a, %a
+[debug]              inst name:c
+[debug]        this is value(inst):   %d = add i32 %c, %a
+[debug]              inst name:d
+[debug]        this is value(inst):   %cond2 = icmp eq i32 %a, %c
+[debug]              inst name:cond2
+
+[debug] ****** I found compare inst!:   %cond2 = icmp eq i32 %a, %c
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0:   %a = add i32 %king, %queen
+[debug] Op0.getname(): a
+[debug] Op1:   %c = add i32 %a, %a
+[debug] Op1.getname(): c
+[debug]--  %a = add i32 %king, %queen is argv[-1]
+[debug]--  %c = add i32 %a, %a is argv[-1]
+
+[debug]--  %a = add i32 %king, %queen is inst[2]
+[debug]--  %c = add i32 %a, %a is inst[6]
+
+[debug]  ** '  %c = add i32 %a, %a' should be replaced by '  %a = add i32 %king, %queen'
+
+
+[debug] ** 4. find condUser:   br i1 %cond2, label %true2, label %exit
+[debug] num of operands: 3
+[debug] ---operand0: cond2
+[debug] ---operand1: exit
+[debug] ---operand2: true2
+[debug] >>> 여기로 뛸거야 >>> true2
+[debug] ** 5. loserUsers:   %g = add i32 %a, %c
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true2
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entrytrue1,true2) dominates true2!!!!!!!
+
+[debug] ** 5. loserUsers:   %e = add i32 %c, %d
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true2
+[debug] successor[1]: exit
+[debug] 이 문장 나오면 바뀌는거다.
+***** Edge (entrytrue1,true2) dominates true2!!!!!!!
+
+[debug] ** 5. loserUsers:   %cond2 = icmp eq i32 %a, %c
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true2
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %d = add i32 %c, %a
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true2
+[debug] successor[1]: exit
+[debug]        this is value(inst):   br i1 %cond2, label %true2, label %exit
+[debug]              inst name:
+[debug]        this is value(inst):   %1 = call i32 @f(i32 %joker, i32 %a, i32 %b)
+[debug]              inst name:
+[debug]        this is value(inst):   ret i32 0
+[debug]              inst name:
+[debug]        this is value(inst):   %e = add i32 %a, %d
+[debug]              inst name:e
+[debug]        this is value(inst):   %g = add i32 %a, %a
+[debug]              inst name:g
+[debug]        this is value(inst):   %h = add i32 %g, %e
+[debug]              inst name:h
+[debug]        this is value(inst):   %cond3 = icmp eq i32 %a, %joker
+[debug]              inst name:cond3
+
+[debug] ****** I found compare inst!:   %cond3 = icmp eq i32 %a, %joker
+
+[debug] ****** icmp일 때에만 이 문장 나와야 함
+ [debug]** 3. decideWinnerLoser
+[debug] Op0:   %a = add i32 %king, %queen
+[debug] Op0.getname(): a
+[debug] Op1: i32 %joker
+[debug] Op1.getname(): joker
+[debug]--  %a = add i32 %king, %queen is argv[-1]
+[debug]--i32 %joker is argv[0]
+
+[debug]  ** '  %a = add i32 %king, %queen' should be replaced by 'i32 %joker'
+
+
+[debug] ** 4. find condUser:   br i1 %cond3, label %true, label %exit
+[debug] num of operands: 3
+[debug] ---operand0: cond3
+[debug] ---operand1: exit
+[debug] ---operand2: true
+[debug] >>> 여기로 뛸거야 >>> true
+[debug] ** 5. loserUsers:   %e = add i32 %a, %d
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %g = add i32 %a, %a
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %c = add i32 %a, %a
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %d = add i32 %c, %a
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %cond2 = icmp eq i32 %a, %c
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %g = add i32 %a, %a
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %1 = call i32 @f(i32 %joker, i32 %a, i32 %b)
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %cond3 = icmp eq i32 %a, %joker
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %c = add i32 %a, %a
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true
+[debug] successor[1]: exit
+[debug] ** 5. loserUsers:   %cond1 = icmp eq i32 %b, %a
+
+[debug] ** 6. checkBBEdominance
+
+[debug] 일단 실험해보자 : successor 갯수: 2
+[debug] successor[0]: true
+[debug] successor[1]: exit
+[debug]        this is value(inst):   br i1 %cond3, label %true, label %exit
+[debug]              inst name:
+; ModuleID = './mycheck/check3.ll'
+source_filename = "./mycheck/check3.ll"
+
+define i32 @f(i32 %joker, i32 %king, i32 %queen) {
+  %cond = icmp eq i32 %king, %queen
+  br label %true
+
+true:                                             ; preds = %true2, %0
+  %a = add i32 %king, %queen
+  %b = add i32 %joker, %king
+  %cond1 = icmp eq i32 %b, %a
+  br i1 %cond1, label %true1, label %exit
+
+true1:                                            ; preds = %true
+  %c = add i32 %a, %a
+  %d = add i32 %c, %a
+  %cond2 = icmp eq i32 %a, %c
+  br i1 %cond2, label %true2, label %exit
+
+true2:                                            ; preds = %true1
+  %e = add i32 %a, %d
+  %g = add i32 %a, %a
+  %h = add i32 %g, %e
+  %cond3 = icmp eq i32 %a, %joker
+  br i1 %cond3, label %true, label %exit
+
+exit:                                             ; preds = %true2, %true1, %true
+  %1 = call i32 @f(i32 %joker, i32 %a, i32 %b)
+  ret i32 0
+}
 ----- test -----
 == data/check1.ll ==
 [debug] basic block list size : 4
