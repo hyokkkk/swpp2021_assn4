@@ -50,10 +50,9 @@ using namespace llvm::PatternMatch;
 
 static vector<Value*> argV;             // vectors for function arguments.
 static vector<Value*> instV;            // vectors for instructions in function.
-static Value* loser;                    // a syntax which will be replaced by "winner".
+static vector<BasicBlock*> BFS;         // queue for BasicBlock BFS
 static Value* winner;                   // a syntax which will replace "loser".
-static vector<BasicBlock*> BFS;     // queue for BasicBlock BFS
-static vector<StringRef> visitedV;
+static Value* loser;                    // a syntax which will be replaced by "winner".
 
 namespace {
 class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> {
@@ -73,37 +72,31 @@ PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
             replaceEquality(F, FAM, &I);
         }
     }
-
-
-
     return PreservedAnalyses::all();
 }
 //============================================================================
-void sortBBbyBFSorder(Function& F){
-    // BFSqueue는 control flow에 위배되지 않는 순서대로 BB를 정렬함.
-    // 탐색 순서만 나타내는 용도.
-    Function* fp = &F;
-    // 일단 방문한 애를 vector에 넣는 게 낫지. vector에 넣기 전에 visited 살펴서
-    // 이미 존재하면 안 넣고 다음으로 넘어가면 되니까. 
-    BasicBlock& entryBB = F.getEntryBlock();
-    BasicBlock* entryBBp = &entryBB;
-    visitedV.push_back(entryBB.getName());
-    BFS.push_back(entryBBp);
 
-    // BFS의 사이즈와 basicblocklist의 사이즈가 같아질 때까지 loop돈다.
+// 1. <BB into BFS vector by BFS order>
+void sortBBbyBFSorder(Function& F){
+    // BFS는 control flow에 위배되지 않는 순서대로 BB를 정렬함. 이 순서대로 instruction을 탐색함.
+    Function* fp = &F;                              
+    BasicBlock& entryBB = F.getEntryBlock();         
+    BasicBlock* entryBBp = &entryBB;
+    BFS.push_back(entryBBp); 
+
     outs() << "[debug] basic block list size : " << fp->getBasicBlockList().size() << "\n";
 
-    int BFSitr= 0;        // BFS iter
+    // BFS의 사이즈와 basicblocklist의 사이즈가 같아질 때까지 loop돈다.
+    int BFSitr= 0;        
     int BBLsize = fp->getBasicBlockList().size();
-    // 종료시키는 BB의 이름이어야 함. instruction name 이 ret인 경우. 
     while (BFSitr != BBLsize-1){
-        // BB를 종료시키는 instruction : BR inst인지 확인. 
-        // successor을 받아야 하기 때문. 
 
         Instruction* isRet = (*BFS[BFSitr]).getTerminator();
         outs() << "[debug] <<<이건 그냥 inst만 받은거>>>: " << *isRet << "\n\n";
         outs() << "이게 ret이 나와야 하는데"<< isRet->getOpcodeName() << "\n";
-        // 마지막 BB라는 의미. 
+
+        // terminator inst가 `ret`이라면 successor를 받을 수 없기 때문에 
+        // 오류가 생기지 않도록 미리 cut해야 함.
         if ((StringRef)(isRet->getOpcodeName())==(StringRef)("ret")) {
             outs() << "오잉 여기 안 들어와??" << "\n";
             BFSitr++;
@@ -113,35 +106,27 @@ void sortBBbyBFSorder(Function& F){
 
         BranchInst* terminator = dyn_cast<BranchInst>((*BFS[BFSitr++]).getTerminator());
         outs() << "[debug] === 이게 branch instruction terminator: " << *terminator << "\n\n";
-        // successor 받아서 앞에꺼부터 넣는다.
-        // 이렇게 하면 Label의 내용이 나옴. 
         outs() << "[debug] === successor 갯수: " << (*terminator).getNumSuccessors() << "\n";
         outs() << "이거 타입이 뭐임 " << (*terminator->getSuccessor(0)).getName() << "\n";
         
-        // 아.. label... 이면... 또 name으로 BB를 찾아가야하는 것인가. 
+        // successor(0), (1) 순서로 방문할 예정. BFS에 넣는다. 
+        // successor name은 BB name형태이므로 BBlist에서 해당 BB 주소를 찾는다.
         BasicBlock* BBp;
+        StringRef succName;
         for (int i = 0; i < (*terminator).getNumSuccessors(); i++){
-            // 이름으로 찾아야 함. 
-            StringRef succName = (*terminator->getSuccessor(i)).getName();
+            succName = (*terminator->getSuccessor(i)).getName();
             BBp = findBasicBlockPointer(F, succName);
             outs() << "[debug] ** BBlist에서 이름 같은 BB 찾음: " << BBp->getName() << "\n";
             // 이미 방문된 적 있으면 다시 방문할 필요 없음.
             if (!visited(succName)){
                 BFS.push_back(BBp);
-                visitedV.push_back(succName);
             }
         }
-
         outs() << "[debug] ++++++ BFS elements ++++++ \n";
         for (auto &B : BFS){
             outs() << "[debug] +++++++ " << (*B).getName() << "\n";
         }
-        outs() << "\n[debug] ++++++ visited elements ++++++ \n";
-        for (auto &B : visitedV){
-            outs() << "[debug] +++++++ " << B<< "\n";
-        }
     }
-
 } 
 
 //============================================================================
@@ -158,14 +143,14 @@ BasicBlock* findBasicBlockPointer(Function& F, StringRef BBname){
 //============================================================================
 bool visited(StringRef succName){
     bool v = false;
-    for (StringRef& n : visitedV){
+    for (BasicBlock* bp : BFS){
+        StringRef n = (*bp).getName();
         if (n == succName){
             v = true;
         }
     }
     return v;
 }
-
 //============================================================================
 // The reason why "F" and "FAM" are in param is to use 'checkDominance()' function.
 void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V ) {
@@ -256,15 +241,13 @@ void decideWinnerLoser(Value* Op0, Value* Op1, Function& F, FunctionAnalysisMana
         outs() << "[debug]--" << *Op0 << " is argv[" << op0argV << "]\n";
         outs() << "[debug]--" << *Op1 << " is argv[" << op1argV << "]\n\n";
         // (1) inst vs. inst : first executed, become winner.
-        //      i) instructions in same BB : compare instV index. (first come, first executed.)
-        //      ii) instructions in diff BB : check the dominance of two BBs. Instruction in 
-        //                                  dominant BB dominates instruction in non-dominant BB.
+        //     - compare instV index. (first come, first executed.)
         if (op0argV == -1 && op1argV == -1){
             Instruction *instOp0, *instOp1;
             BasicBlock *op0BB, *op1BB;
             int op0instV = -1, op1instV = -1;
 
-            // find BBs which each instruction is in. 
+            // find BBs where each instruction is. 
             for (int i = 0; i < instV.size(); i++){
                 if ((*instV[i]).getName().equals((*Op0).getName())){
                     op0instV= i;
