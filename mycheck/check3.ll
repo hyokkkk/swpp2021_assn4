@@ -1,6 +1,6 @@
 ; Write your own check here.
-; Feel free to add arguments to @f, so its signature becomes @f(i32 %x, ...).
-; But, this file should contain one function @f() only.
+; Feel free to add arguments to @loop, so its signature becomes @loop(i32 %x, ...).
+; But, this file should contain one function @loop() only.
 ; FileCheck syntax: https://llvm.org/docs/CommandGuide/FileCheck.html
 
 define i32 @f(i32 %joker, i32 %king, i32 %queen) {
@@ -24,7 +24,7 @@ define i32 @f(i32 %joker, i32 %king, i32 %queen) {
 ;CHECK-NEXT: [[COND3:%.*]] = icmp eq i32 [[A]], [[JOKER]]
 ;CHECK-NEXT: br i1 [[COND3]], label [[TRUE]], label [[EXIT]]
 ;CHECK:  exit:
-;CHECK-NEXT: call i32 @f(i32 [[JOKER]], i32 [[A]], i32 [[B]])
+;CHECK-NEXT: call i32 @loop(i32 [[JOKER]], i32 [[A]], i32 [[B]])
 ;CHECK-NEXT: ret i32 0
 
 
@@ -47,6 +47,8 @@ define i32 @f(i32 %joker, i32 %king, i32 %queen) {
     %cond3 = icmp eq i32 %a, %joker
     br i1 %cond3, label %true, label %exit
   exit:
-    call i32 @f(i32 %joker, i32 %a, i32 %b)
+    call i32 @loop(i32 %joker, i32 %a, i32 %b)
     ret i32 0
 }
+
+declare i32 @loop(i32, i32, i32)
