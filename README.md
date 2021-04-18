@@ -1,4 +1,6 @@
 ## Assignment 4
+### alive2 사용법
+`~/workspace/llvm_swpp_2021spring/alive2/build/alive-tv <src.ll> <tgt.ll> -smt-to <시간제한>`
 
 To submit your code:
 
