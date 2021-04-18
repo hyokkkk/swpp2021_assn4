@@ -1,8 +1,3 @@
-; Write your own check here.
-; Feel free to add arguments to @f, so its signature becomes @f(i32 %x, ...).
-; But, this file should contain one function @f() only.
-; FileCheck syntax: https://llvm.org/docs/CommandGuide/FileCheck.html
-
 ; Case : instruction vs. instruction.
 ; *** instruction dominance 따질 때 단순히 ir code상 선후관계로 판단하는 것을
 ;     catch 하기 위해 서로 다른 BB에 위치한 instruction을 사용하게 하였고,

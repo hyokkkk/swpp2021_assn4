@@ -1,7 +1,6 @@
-; Write your own check here.
-; Feel free to add arguments to @stock, so its signature becomes @stock(i32 %x, ...).
-; But, this file should contain one function @stock() only.
-; FileCheck syntax: https://llvm.org/docs/CommandGuide/FileCheck.html
+; 1. mixed order
+; 2. dependent and sequential replacement (apple -> samsung -> zonber)
+; 3. all possible cases : arg vs. arg / inst vs. inst in same BB / inst vs. inst in diff BB / arg vs. inst
 
 define i32 @f(i32 %zonber, i32 %buy, i32 %hold, i32 %sell, i32 %samsung, i32 %tothemoon) {
 ; CHECK-LABEL:  @f(i32 %zonber, i32 %buy, i32 %hold, i32 %sell, i32 %samsung, i32 %tothemoon) {
