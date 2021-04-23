@@ -44,7 +44,7 @@ This will run 11 FileChecks in `data` directory.
 Note that they are not full tests; more tests can be added by TA when grading
 your homework.
 
-```sh
+```shell
 ./run.sh all (your dir)/my-llvm-releaseassert/bin
 # To build propinteq.cpp..
 ./run.sh build (your dir)/my-llvm-releaseassert/bin
