@@ -4,7 +4,7 @@
 
 To submit your code:
 
-```
+```sh
 ./package.sh
 # Now, upload submit.tar.gz to ETL
 ```
@@ -22,7 +22,7 @@ replace x with y (or y with x) for all uses of x that are
 (1) executed after the branch is taken
 (2) dominated by the conditional branch.
 
-```
+```llvm
 ENTRY:
   %cond = icmp eq i32 %x, %y
   br i1 %cond, label %BB_true, label %BB_false
@@ -44,7 +44,7 @@ This will run 11 FileChecks in `data` directory.
 Note that they are not full tests; more tests can be added by TA when grading
 your homework.
 
-```
+```sh
 ./run.sh all (your dir)/my-llvm-releaseassert/bin
 # To build propinteq.cpp..
 ./run.sh build (your dir)/my-llvm-releaseassert/bin
@@ -61,7 +61,7 @@ Here is the list of conditions for correct replacement of two values.
 1. If two instructions %x and %y are compared, and %x dominates %y,
 replace %y with %x.
 
-```
+```llvm
 ; pseudocode
 entry:
   %x = ...
@@ -77,7 +77,7 @@ BB_true:
 2. If two arguments %x and %y are compared, replace the one which appeared later
 in the function argument list with the other one which appeared earlier.
 
-```
+```llvm
 define void @f(i32 %y, i32 %x) {
   %cond = icmp eq i32 %x, %y
   br %cond, %BB_true, %BB_false
@@ -90,7 +90,7 @@ BB_true:
 3. If an argument is compared with an instruction, replace the instruction
 with an argument.
 
-```
+```llvm
 define void @f(i32 %a) {
   %b = ...
   %cond = icmp eq i32 %a, %b
@@ -141,7 +141,7 @@ If the condition is a register, it should only compare
 integer registers (no vectors, pointers, int constants, etc).
 If branch condition is a constant, it shouldn't be constant expression.
 
-```
+```llvm
   br i1 true, ..      // okay
 
   %cond = icmp eq %x, %y
@@ -158,7 +158,7 @@ If branch condition is a constant, it shouldn't be constant expression.
 5. If an `icmp` instruction is used by a conditional branch `br`, the conditional
 branch and the `icmp` should be in the same basic block.
 
-```
+```llvm
 BB:
   %cond = icmp eq %x, %y
   br label %BB2
