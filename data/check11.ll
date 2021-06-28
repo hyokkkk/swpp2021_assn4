@@ -8,7 +8,7 @@ define void @main(i32 %a, i32 %b) {
 ; CHECK:       bb_false:
 ; CHECK-NEXT:    call void @f(i32 [[A]], i32 [[B]])
 ; CHECK-NEXT:    ret void
-;
+
   %cond = icmp ne i32 %a, %b
   br i1 %cond, label %bb_true, label %bb_false
 bb_true:
