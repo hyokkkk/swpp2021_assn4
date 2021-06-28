@@ -66,7 +66,7 @@ PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
         argV.push_back(arg);
     }
     // 1. <BB into BFS vector by BFS order>
-    sortBBbyBFSorder(F);
+    BFSorder(F);
     for (auto BBp : BFS){
         for (auto &I : *BBp){
             replaceEquality(F, FAM, &I);
@@ -75,68 +75,38 @@ PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
     return PreservedAnalyses::all();
 }
 //============================================================================
-
-// 1. <BB into BFS vector by BFS order>
-void sortBBbyBFSorder(Function& F){
-    // BFS는 control flow에 위배되지 않는 순서대로 BB를 정렬함. 이 순서대로 instruction을 탐색함.
-    Function* fp = &F;
-    BasicBlock& entryBB = F.getEntryBlock();
-    BasicBlock* entryBBp = &entryBB;
-    BFS.push_back(entryBBp);
-
-    // BFS의 사이즈와 basicblocklist의 사이즈가 같아질 때까지 loop돈다.
-    int BFSitr= 0;
-    int BBLsize = fp->getBasicBlockList().size();
-    while (BFSitr != BBLsize-1){
-        Instruction* isRet = (*BFS[BFSitr]).getTerminator();
-
-        // terminator inst가 `ret`이라면 successor를 받을 수 없기 때문에
-        // 오류가 생기지 않도록 미리 cut해야 함.
-        if ((StringRef)(isRet->getOpcodeName())==(StringRef)("ret")) {
-            BFSitr++;
-            continue;
-        }
-        BranchInst* terminator = dyn_cast<BranchInst>((*BFS[BFSitr++]).getTerminator());
-
-        // successor(0), (1) 순서로 방문할 예정. BFS에 넣는다.
-        // successor name은 BB name형태이므로 BBlist에서 해당 BB 주소를 찾는다.
-        BasicBlock* BBp;
-        StringRef succName;
-        for (int i = 0; i < (*terminator).getNumSuccessors(); i++){
-            succName = (*terminator->getSuccessor(i)).getName();
-            BBp = findBasicBlockPointer(F, succName);
-
-            // 이미 방문된 적 있으면 다시 방문할 필요 없음.
-            if (!visited(succName)){
-                BFS.push_back(BBp);
-            }
-        }
-    }
+bool visited(BasicBlock* BBp)
+{
+  for (BasicBlock* bp : BFS){
+    if (bp != BBp){ continue; }
+    return true;
+  }
+  return false;
 }
-//============================================================================
 
-BasicBlock* findBasicBlockPointer(Function& F, StringRef BBname){
-    Function* fp = &F;
-    for (auto iter = fp->getBasicBlockList().begin();
-        iter != fp->getBasicBlockList().end(); iter++){
-        if ((*iter).getName() == BBname){
-            return &(*iter);
-        }
-    }
-    return NULL;
-}
-//============================================================================
+void BFSorder(Function& F)
+{
+  BasicBlock* entryBBp = &F.getEntryBlock();
+  BFS.push_back(entryBBp);
 
-bool visited(StringRef succName){
-    bool v = false;
-    for (BasicBlock* bp : BFS){
-        StringRef n = (*bp).getName();
-        if (n == succName){
-            v = true;
-        }
+  // BFS의 사이즈와 basicblocklist의 사이즈가 같아질 때까지 loop돈다.
+  int BFSitr= 0;
+  int BBLsize = (&F)->getBasicBlockList().size();
+  while (BFSitr+1 != BBLsize){
+    // TI : ret
+    Instruction* TI = (*BFS[BFSitr++]).getTerminator();
+    if (!dyn_cast<BranchInst>(TI) && !dyn_cast<SwitchInst>(TI)){ continue; }
+
+    // TI : br / switch
+    for (int i = 0; i < (*TI).getNumSuccessors(); i++){
+      BasicBlock* BBp = TI->getSuccessor(i);
+      // never visit again.
+      if (visited(BBp)){ continue; }
+      BFS.push_back(BBp);
     }
-    return v;
+  }
 }
+
 //============================================================================
 // The reason why "F" and "FAM" are in param is to use 'checkDominance()' function.
 void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V ) {
