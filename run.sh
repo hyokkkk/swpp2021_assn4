@@ -76,6 +76,7 @@ if [[ "$1" == "test" || "$1" == "all" ]]; then
       PASSED=$((PASSED+1))
     fi
     TOTAL=$((TOTAL+1))
+
   done
 
   echo "MyCheck passed: $PASSED / $TOTAL"
