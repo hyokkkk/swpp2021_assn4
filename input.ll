@@ -1,4 +1,5 @@
 define void @f(i32 %x, i32 %y) {
+
 entry:
   %cond = icmp eq i32 %x, %y
   br i1 %cond, label %BB_true, label %BB_false
