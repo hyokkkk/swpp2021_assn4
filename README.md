@@ -1,4 +1,7 @@
 ## Assignment 4
+#### 290/300. Hack 32 files by mycheck2, being hacked by 5 checkers. 
+#### 300점 2명, 292점 1명, 290점 2명.
+
 ### alive2 사용법
 `~/workspace/llvm_swpp_2021spring/alive2/build/alive-tv <src.ll> <tgt.ll> -smt-to <시간제한>`
 
