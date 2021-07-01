@@ -53,9 +53,6 @@ static Value* loser;                    // a syntax which will be replaced by "w
 namespace {
 class PropagateIntegerEquality : public PassInfoMixin<PropagateIntegerEquality> {
 
-//
-// entry point
-//
 public:
 PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM) {
     // 1. <BB into BFS vector by BFS order>
@@ -97,6 +94,7 @@ void BFSorder(Function& F){
   }
 }
 
+
 void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V ) {
     // 2. check the instruction is `%cond = icmp i32 %a, %b` or not.
     DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(F);
@@ -121,7 +119,7 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V ) {
         Instruction* targetInst = dyn_cast<Instruction>(loserUse.getUser());
         assert(targetInst);
 
-        // 5. replace "loser"s which are in "targetBB"s with "winner" only when
+        // 5. replace "loser"s in "targetBB"s with "winner", only when
         //    "targetBB" is dominated by BBEdge(entryBB, trueBB).
         //    it works same as "dummy block"
         BasicBlock* startBB = inst->getParent();
@@ -133,9 +131,7 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V ) {
     }
 }
 
-//
-// Parse the values
-//
+
 void decideWinnerLoser(Value* X, Value* Y){
     auto isXArg = dyn_cast<Argument>(X);
     auto isYArg = dyn_cast<Argument>(Y);
