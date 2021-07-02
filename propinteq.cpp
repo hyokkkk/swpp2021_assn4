@@ -106,15 +106,15 @@ void replaceEquality(Function &F, FunctionAnalysisManager &FAM, Value *V ) {
     ICmpInst::Predicate Pred;
 
     // if not matched with '%cond = icmp eq (v1, v2)', return.
-    if (!(match(inst, m_ICmp(Pred, m_Value(Op0), m_Value(Op1))) && 
+    if (!(match(inst, m_ICmp(Pred, m_Value(Op0), m_Value(Op1))) &&
         Pred == ICmpInst::ICMP_EQ)) { return ; }
 
     // 3. arg? inst?
     decideWinnerLoser((*inst).getOperand(0), (*inst).getOperand(1));
 
     // 4. find "loserUsers"
-    for (auto loserItr = loser->use_begin(), loserEnd = loser->use_end();
-                                                    loserItr != loserEnd;){
+    for (auto loserItr = loser->use_begin(),
+        loserEnd = loser->use_end(); loserItr != loserEnd;){
         Use& loserUse = *loserItr++;
         Instruction* targetInst = dyn_cast<Instruction>(loserUse.getUser());
         assert(targetInst);
